@@ -1,0 +1,14 @@
+load("@rules_python//python:py_library.bzl", "py_library")
+load("//:versions.bzl", "NODE_VERSIONS")
+load(":defs.bzl", "rootbeer_tests")
+
+py_library(
+    name = "trustlib",
+    srcs = [
+        "crypto_bundle.py",
+        "trustlib.py",
+    ],
+    imports = ["."],
+)
+
+[rootbeer_tests(major, version) for major, version in NODE_VERSIONS.items()]

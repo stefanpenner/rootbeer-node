@@ -1,0 +1,9 @@
+common --enable_bzlmod
+build --jobs=10
+test --test_output=errors
+test --test_verbose_timeout_warnings
+
+# The node build action runs a long time. Keep the machine usable.
+build --local_resources=cpu=10
+
+try-import %workspace%/user.bazelrc

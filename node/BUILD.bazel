@@ -1,0 +1,6 @@
+load("//:versions.bzl", "NODE_VERSIONS")
+load(":defs.bzl", "node_line")
+
+package(default_visibility = ["//visibility:public"])
+
+[node_line(major) for major in NODE_VERSIONS]

@@ -1,0 +1,4 @@
+exports_files(
+    ["mozilla-no-emsign.pem"],
+    visibility = ["//visibility:public"],
+)
