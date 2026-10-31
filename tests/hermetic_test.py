@@ -143,8 +143,34 @@ class BinaryScan(unittest.TestCase):
         # OPENSSLDIR names the default store. macOS Node points it at /System/Library/OpenSSL.
         with open(ROOTBEER, "rb") as binary:
             data = binary.read()
-        self.assertIn(b'OPENSSLDIR: "/etc/ssl"', data)
-        self.assertNotIn(b"/System/Library/OpenSSL", data)
+        # assertTrue, not assertIn: a failed assertIn prints the whole binary (300 MB) into the log.
+        self.assertTrue(b'OPENSSLDIR: "/etc/ssl"' in data, "OPENSSLDIR is not /etc/ssl")
+        self.assertFalse(b"/System/Library/OpenSSL" in data, "OPENSSLDIR names the macOS OpenSSL path")
+
+
+class BuildPaths(unittest.TestCase):
+    """The binary must not hold the path of the machine that built it."""
+
+    BUILD_PATH = re.compile(rb"/execroot/|bazel-out/|/sandbox/(processwrapper|darwin|linux)-sandbox")
+    FIXED_MODULES_DIR = b'MODULESDIR: "/nonexistent/ossl-modules"'
+
+    def test_pattern_finds_a_build_path(self):
+        # The control. The pattern must match the paths that Bazel builds leave in a binary.
+        for sample in (b"/cache/x/sandbox/processwrapper-sandbox/1/execroot/_main/a",
+                       b"/Users/x/sandbox/darwin-sandbox/3/execroot/_main/bazel-out/b"):
+            self.assertTrue(self.BUILD_PATH.search(sample), sample)
+
+    def test_rootbeer_binary_holds_no_build_path(self):
+        with open(ROOTBEER, "rb") as binary:
+            found = sorted({m.group(0) for m in self.BUILD_PATH.finditer(binary.read())})
+        self.assertEqual(found, [])
+
+    def test_openssl_modules_dir_is_fixed(self):
+        # OpenSSL 3 (Node 18 and newer) loads provider modules from MODULESDIR.
+        if MAJOR < 18:
+            self.skipTest("OpenSSL 1.1.1 has no MODULESDIR")
+        with open(ROOTBEER, "rb") as binary:
+            self.assertTrue(self.FIXED_MODULES_DIR in binary.read(), "MODULESDIR is not fixed")
 
 
 class LinkCheck(unittest.TestCase):

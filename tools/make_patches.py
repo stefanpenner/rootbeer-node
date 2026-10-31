@@ -233,6 +233,12 @@ def openssl_dir(text, name):
         r'OPENSSLDIR="/System/Library/OpenSSL/"', 'OPENSSLDIR="/etc/ssl"', text, name)
 
 
+def modules_dir(text, name):
+    # Node sets MODULESDIR to the build directory, so the binary holds the path of the builder.
+    return substitute(
+        r"'MODULESDIR=\"<\(modules_dir\)\"'", "'MODULESDIR=\"/nonexistent/ossl-modules\"'", text, name)
+
+
 def include_char_traits(text, name):
     return substitute(
         r"#include <string>\n",
@@ -258,6 +264,8 @@ def edits_for(major):
     }
     if major == "16":
         edits["deps/openssl/openssl.gypi"] = openssl_dir
+    else:
+        edits["deps/openssl/openssl.gyp"] = modules_dir
     return edits
 
 

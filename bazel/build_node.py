@@ -118,6 +118,7 @@ def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, ol
     common = [
         f"-ffile-prefix-map={scratch}=.",
         f"-ffile-prefix-map={llvm}=llvm",
+        f"-ffile-prefix-map={sysroot}=/sysroot",
         "-Wno-unused-command-line-argument",
         "-fuse-ld=lld",
     ] + (OLD_V8_FLAGS if old_v8 else [])
@@ -129,8 +130,11 @@ def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, ol
     libcxx, libcxxabi = libcxx_paths(llvm, args.os)
     link_flags = ["-nostdlib++", libcxx, libcxxabi]
     if args.os == "darwin":
-        # A static libc++ with chained fixups crashes at startup on Darwin 27.
+        # A static libc++ with chained fixups crashes at startup on Darwin 27. See docs/HERMETICITY.md.
         link_flags += ["-Wl,-no_fixup_chains"]
+        # Without -S, lld records the path of every object file in the symbol table (N_OSO), and
+        # those paths are the sandbox path of this build.
+        link_flags += ["-Wl,-S"]
     else:
         link_flags += ["-lpthread", "-ldl", "-lm"]
 

@@ -118,3 +118,15 @@ diff --git a/deps/openssl/openssl_common.gypi b/deps/openssl/openssl_common.gypi
          'ENGINESDIR="/dev/null"',
        ],
      }, 'OS=="solaris"', {
+diff --git a/deps/openssl/openssl.gyp b/deps/openssl/openssl.gyp
+--- a/deps/openssl/openssl.gyp
++++ b/deps/openssl/openssl.gyp
+@@ -47,7 +47,7 @@
+         }],
+         ['node_shared_openssl=="false"', {
+           'defines': [
+-            'MODULESDIR="<(modules_dir)"',
++            'MODULESDIR="/nonexistent/ossl-modules"',
+           ]
+         }],
+       ],
