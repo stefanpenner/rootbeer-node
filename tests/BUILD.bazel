@@ -59,6 +59,24 @@ py_test(
 )
 
 py_test(
+    name = "runtimes_test",
+    srcs = ["runtimes_test.py"],
+    data = [
+        "//:MODULE.bazel",
+        "//.github/workflows:runtime-matrix.jq",
+        "//runtimes:manifests",
+        "//tools:jq",
+    ],
+    env = {
+        "JQ": "$(rootpath //tools:jq)",
+        "MATRIX_FILTER": "$(rootpath //.github/workflows:runtime-matrix.jq)",
+        "MODULE_BAZEL": "$(rootpath //:MODULE.bazel)",
+        "RUNTIME_MANIFESTS": "$(rootpaths //runtimes:manifests)",
+    },
+    size = "small",
+)
+
+py_test(
     name = "bazel_config_test",
     srcs = ["bazel_config_test.py"],
     data = [
@@ -209,6 +227,12 @@ py_test(
     tests = [":%s_%d_test" % (kind, major) for major in NODE_VERSIONS],
 ) for kind in ("source", "source_mutation", "stock_teeth", "hermetic", "network")]
 
+# One target per line, so the manifest can name what a build leg tests.
+[test_suite(
+    name = "node_%d_tests" % major,
+    tests = [":%s_%d_test" % (kind, major) for kind in ("source", "hermetic", "network")],
+) for major in NODE_VERSIONS]
+
 py_test(
     name = "versions_test",
     srcs = ["versions_test.py"],
@@ -253,14 +277,14 @@ py_test(
     data = [
         "//:MODULE.bazel",
         "//:README.md",
-        "//.github/workflows:ci.yml",
+        "//runtimes:node.json",
         "//tools:add_node_version.py",
     ],
     env = {
         "ADD_NODE_VERSION": "$(rootpath //tools:add_node_version.py)",
         "MODULE_BAZEL": "$(rootpath //:MODULE.bazel)",
+        "NODE_MANIFEST": "$(rootpath //runtimes:node.json)",
         "README": "$(rootpath //:README.md)",
-        "WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
     },
     size = "small",
 )

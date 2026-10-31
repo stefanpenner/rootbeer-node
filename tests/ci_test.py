@@ -16,7 +16,12 @@ BAZEL_VERSION = Path(os.environ["BAZELVERSION"]).read_text().strip()
 HOSTED = re.compile(r"^(ubuntu|macos|windows)-[a-z0-9.]+$")
 NOT_PR = "github.event_name != 'pull_request'"
 ONLY_PR = "github.event_name == 'pull_request'"
-RUNNER_VARIABLE = "${{ vars.CI_RUNS_ON || '\"ubuntu-latest\"' }}"
+LINUX_USES_THE_VARIABLE = (
+    "${{ startsWith(matrix.os, 'ubuntu-') && "
+    "fromJSON(vars.CI_RUNS_ON || '\"ubuntu-latest\"') || matrix.os }}"
+)
+# These jobs turn runtimes/*.json into the build matrix. They run jq and no build.
+MATRIX_JOBS = {"matrix": "all", "matrix-pr": "pr"}
 
 
 def triggers():
@@ -29,11 +34,6 @@ def jobs():
     body = WORKFLOW.split("\njobs:\n", 1)[1]
     parts = re.split(r"^  ([a-z0-9_-]+):\n", body, flags=re.MULTILINE)
     return dict(zip(parts[1::2], parts[2::2]))
-
-
-def matrix_list(text, key):
-    match = re.search(rf"^        {key}: \[(.*)\]$", text, re.MULTILINE)
-    return [item.strip() for item in match.group(1).split(",")] if match else []
 
 
 def field(text, name):
@@ -69,10 +69,9 @@ class PullRequestJobs(unittest.TestCase):
             if field(text, "if") == ONLY_PR:
                 runs_on = field(text, "runs-on")
                 if runs_on == "${{ matrix.os }}":
-                    systems = matrix_list(text, "os")
-                    self.assertTrue(systems, name)
-                    for system in systems:
-                        self.assertRegex(system, HOSTED, name)
+                    # The manifests name the systems. runtimes_test proves that the
+                    # filter refuses each system that is not hosted.
+                    self.assertIn("fromJSON(needs.matrix-pr.outputs.legs)", text, name)
                 else:
                     self.assertRegex(runs_on, HOSTED, name)
 
@@ -99,20 +98,48 @@ class PushJobs(unittest.TestCase):
         self.assertTrue(selected)
         for name, text in selected.items():
             runs_on = field(text, "runs-on")
-            if runs_on == "${{ fromJSON(matrix.runs_on) }}":
+            if name in MATRIX_JOBS:
+                # jq is on the hosted image. A self-hosted runner may not have it.
+                self.assertEqual(runs_on, "ubuntu-latest", name)
+            elif "matrix:" in text:
                 # Only Linux uses the variable. macOS stays on GitHub.
-                self.assertIn(f"        runs_on: {RUNNER_VARIABLE}\n", text, name)
-                self.assertIn("        runs_on: '\"macos-14\"'\n", text, name)
+                self.assertEqual(runs_on, LINUX_USES_THE_VARIABLE, name)
             else:
                 self.assertEqual(runs_on, "${{ fromJSON(vars.CI_RUNS_ON || '\"ubuntu-latest\"') }}", name)
 
 
+class MatrixJobs(unittest.TestCase):
+    def test_each_event_has_one_matrix_job(self):
+        self.assertEqual(field(jobs()["matrix"], "if"), NOT_PR)
+        self.assertEqual(field(jobs()["matrix-pr"], "if"), ONLY_PR)
+
+    def test_each_matrix_job_reads_every_manifest_with_its_scope(self):
+        for name, scope in MATRIX_JOBS.items():
+            text = jobs()[name]
+            self.assertIn(f"          legs=$(jq -c -s --arg scope {scope} -f .github/workflows/runtime-matrix.jq runtimes/*.json)\n", text)
+
+    def test_matrix_jobs_only_run_jq(self):
+        for name in MATRIX_JOBS:
+            text = jobs()[name]
+            self.assertNotIn("bazel", text, name)
+            self.assertNotIn("secrets.", text, name)
+
+    def test_source_tests_run_the_manifest_checks(self):
+        for name in ("source-tests", "source-tests-pr"):
+            self.assertIn("//tests:runtimes_test", jobs()[name], name)
+
+    def test_no_runtime_list_in_the_workflow(self):
+        self.assertNotRegex(WORKFLOW, r"(?m)^\s+(node|runtime|version|line|os): \[")
+
+
 class Build(unittest.TestCase):
     def build_jobs(self):
-        return {n: t for n, t in jobs().items() if "matrix" in t}
+        return {n: t for n, t in jobs().items() if "strategy:" in t}
 
     def test_every_job_installs_the_pinned_bazel(self):
         for name, text in jobs().items():
+            if name in MATRIX_JOBS:
+                continue
             self.assertIn("uses: ./.github/actions/", text, name)
             self.assertTrue(
                 "./.github/actions/setup-bazel" in text or "./.github/actions/build" in text, name
@@ -122,21 +149,23 @@ class Build(unittest.TestCase):
         events = {field(t, "if") for t in self.build_jobs().values()}
         self.assertEqual(events, {ONLY_PR, NOT_PR})
 
-    def test_matrix_covers_macos_and_linux(self):
+    def test_each_build_job_reads_the_matrix_of_its_event(self):
         for name, text in self.build_jobs().items():
-            self.assertIn("macos-14", matrix_list(text, "os"), name)
-            linux = [o for o in matrix_list(text, "os") if o.startswith(("linux", "ubuntu"))]
-            self.assertTrue(linux, name)
+            source = "matrix-pr" if field(text, "if") == ONLY_PR else "matrix"
+            self.assertIn(f"      matrix: ${{{{ fromJSON(needs.{source}.outputs.legs) }}}}\n", text, name)
 
     def test_build_jobs_use_the_build_action(self):
         for name, text in self.build_jobs().items():
             self.assertIn("uses: ./.github/actions/build", text, name)
-            self.assertIn("node: ${{ matrix.node }}", text, name)
+            for key in ("runtime", "line", "target", "test", "artifact"):
+                self.assertIn(f"{key}: ${{{{ matrix.{key} }}}}", text, name)
 
-    def test_build_jobs_do_not_wait_for_each_other(self):
-        # One approval must release every waiting job of a pull request.
+    def test_build_jobs_wait_only_for_their_matrix_job(self):
+        # One approval must release every leg. A leg never waits for another leg.
+        # A pull request has two approvals: first the matrix job, then the legs.
         for name, text in self.build_jobs().items():
-            self.assertNotIn("needs:", text, name)
+            source = "matrix-pr" if field(text, "if") == ONLY_PR else "matrix"
+            self.assertEqual(field(text, "needs"), source, name)
 
     def test_build_jobs_keep_going_when_one_leg_fails(self):
         for name, text in self.build_jobs().items():
@@ -169,10 +198,16 @@ class BuildAction(unittest.TestCase):
     def test_build_runs_the_tests_and_uploads_the_artifact(self):
         self.assertIn("bazel build", ACTION)
         self.assertIn("--output_groups=+dist", ACTION)
-        self.assertIn("//tests:source_${{ inputs.node }}_test", ACTION)
-        self.assertIn("//tests:hermetic_${{ inputs.node }}_test", ACTION)
+        self.assertIn('"$TARGET"', ACTION)
+        self.assertIn('bazel test', ACTION)
+        self.assertIn('"$TEST"', ACTION)
         self.assertIn("upload-artifact@", ACTION)
+        self.assertIn("name: ${{ inputs.runtime }}-${{ inputs.line }}-${{ runner.os }}-${{ runner.arch }}", ACTION)
         self.assertIn("if-no-files-found: error", ACTION)
+
+    def test_inputs_reach_the_shell_only_through_env(self):
+        for block in re.findall(r"run: \|\n((?:        .*\n)+)", ACTION):
+            self.assertNotIn("${{", block)
 
     def test_build_fits_the_machine(self):
         # .bazelrc asks for 10 CPUs. A runner has 2 to 4.

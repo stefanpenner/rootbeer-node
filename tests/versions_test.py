@@ -1,7 +1,8 @@
 """Checks that every place that names a Node line agrees with the node.version tags.
 
 MODULE.bazel holds one tag per version. The hub repo turns the tags into versions.json.
-Everything else (CI matrix, README, patches, make_patches.py) must follow that list.
+Everything else (README, patches, make_patches.py) must follow that list.
+runtimes_test.py checks runtimes/node.json, and the CI matrix comes from that file.
 Adding a version fails here until each place is updated, and the message names the place.
 """
 
@@ -32,12 +33,6 @@ def prose(majors):
     return ", ".join(ordered[:-1]) + ", and " + ordered[-1]
 
 
-def build_jobs():
-    body = WORKFLOW.split("\njobs:\n", 1)[1]
-    parts = re.split(r"^  ([a-z0-9_-]+):\n", body, flags=re.MULTILINE)
-    return {n: t for n, t in zip(parts[1::2], parts[2::2]) if "matrix:" in t}
-
-
 class Hub(unittest.TestCase):
     def test_lines_are_newest_first(self):
         self.assertEqual(MAJORS, sorted(MAJORS, key=int, reverse=True))
@@ -52,27 +47,6 @@ class Hub(unittest.TestCase):
 
 
 class Ci(unittest.TestCase):
-    @staticmethod
-    def matrix_lines(text):
-        match = re.search(r"^        node: \[(.*)\]$", text, re.MULTILINE)
-        return [item.strip() for item in match.group(1).split(",")] if match else None
-
-    def test_matrix_covers_every_node_line(self):
-        self.assertEqual(
-            self.matrix_lines(build_jobs()["build"]),
-            sorted(MAJORS, key=int),
-            "build: edit the node list in .github/workflows/ci.yml",
-        )
-
-    def test_pull_requests_build_the_oldest_and_newest_line_only(self):
-        # A full matrix costs 12 long jobs. The build job on main still builds every line.
-        ordered = sorted(MAJORS, key=int)
-        self.assertEqual(
-            self.matrix_lines(build_jobs()["build-pr"]),
-            [ordered[0], ordered[-1]],
-            "build-pr: edit the node list in .github/workflows/ci.yml",
-        )
-
     def test_the_mutation_suites_run_with_the_source_tests(self):
         # These suites prove that the trust tests can fail. They need no Node build.
         self.assertIn("//tests:source_mutation_tests", WORKFLOW)

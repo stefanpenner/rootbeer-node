@@ -1,9 +1,21 @@
 name: build
-description: Build one Node line with a pinned Bazel, run its tests, and upload the archive.
+description: Build one runtime version with a pinned Bazel, run its tests, and upload the artifact.
 
 inputs:
-  node:
-    description: Node major version, for example 22.
+  runtime:
+    description: Runtime name, from runtimes/<runtime>.json.
+    required: true
+  line:
+    description: Version line, for example 22.
+    required: true
+  target:
+    description: Bazel target to build.
+    required: true
+  test:
+    description: Bazel test target or test suite.
+    required: true
+  artifact:
+    description: Path or glob of the files to upload.
     required: true
 
 runs:
@@ -11,31 +23,36 @@ runs:
   steps:
     - uses: ./.github/actions/setup-bazel
 
-    - name: Build Node ${{ inputs.node }}
+    - name: Build ${{ inputs.runtime }} ${{ inputs.line }}
       shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
       run: |
         # .bazelrc asks for 10 CPUs. Use what the machine has.
         bazel build --jobs=HOST_CPUS --local_resources=cpu=HOST_CPUS \
           --local_resources=memory=HOST_RAM*.8 \
-          //node:rootbeer_${{ inputs.node }} //node:dist_${{ inputs.node }} --output_groups=+dist
+          "$TARGET" --output_groups=+dist
 
-    - name: Test Node ${{ inputs.node }}
+    - name: Test ${{ inputs.runtime }} ${{ inputs.line }}
       shell: bash
+      env:
+        TEST: ${{ inputs.test }}
       run: |
         bazel test --jobs=HOST_CPUS --local_resources=cpu=HOST_CPUS \
           --local_resources=memory=HOST_RAM*.8 \
-          //tests:source_${{ inputs.node }}_test \
-          //tests:hermetic_${{ inputs.node }}_test \
-          //tests:network_${{ inputs.node }}_test
+          "$TEST"
 
-    - name: Collect the archive
+    - name: Collect the artifact
       shell: bash
+      env:
+        ARTIFACT: ${{ inputs.artifact }}
       run: |
         mkdir -p out
-        cp -L bazel-bin/node/node-v*-rootbeer-*.tar.gz* out/
+        # The path may be a glob, so it has no quotes.
+        cp -RL $ARTIFACT out/
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: node-${{ inputs.node }}-${{ runner.os }}-${{ runner.arch }}
+        name: ${{ inputs.runtime }}-${{ inputs.line }}-${{ runner.os }}-${{ runner.arch }}
         path: out/*
         if-no-files-found: error

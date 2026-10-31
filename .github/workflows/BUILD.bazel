@@ -1,4 +1,7 @@
 exports_files(
-    ["ci.yml"],
+    [
+        "ci.yml",
+        "runtime-matrix.jq",
+    ],
     visibility = ["//tests:__pkg__"],
 )
