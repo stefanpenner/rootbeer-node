@@ -20,7 +20,7 @@ Each input has a rung. A lower rung is stronger.
 |---|---|---|
 | Node source 16, 18, 20, 22 | nodejs.org, checksum from `SHASUMS256.txt` | 0 |
 | Stock Node controls | nodejs.org, checksum from `SHASUMS256.txt` | 0 |
-| rootbeer patches | This repository | 0 |
+| systemca-nodejs patches | This repository | 0 |
 | Clang, lld, libc++ 19.1.7 | LLVM GitHub release | 1 |
 | Ninja | Ninja GitHub release | 1 |
 | Python | `rules_python` toolchain, pinned by the module | 0 |

@@ -102,7 +102,7 @@ class NoBundledRoots(unittest.TestCase):
 
 
 class BinaryScan(unittest.TestCase):
-    """The stock binary holds each bundled root as PEM text. Rootbeer must hold none."""
+    """The stock binary holds each bundled root as PEM text. systemca-nodejs must hold none."""
 
     @classmethod
     def setUpClass(cls):
