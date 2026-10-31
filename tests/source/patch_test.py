@@ -40,6 +40,24 @@ class CryptoContext(SourceCase):
         self.assertIn("X509_STORE_set_default_paths(store)", self.text)
 
 
+class Snapshot(SourceCase):
+    """The startup snapshot is part of the binary. V8 must not take a random seed or a
+    schedule from the machine, or two builds of one source make two different binaries."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = read("NODE_MKSNAPSHOT_CC")
+
+    def test_generation_is_predictable(self):
+        self.assertTrue("--predictable" in self.text or "kGeneratePredictableSnapshot" in self.text,
+                        "node_mksnapshot does not ask V8 for a predictable snapshot")
+
+    def test_generation_has_a_fixed_seed(self):
+        # Node 20 and 22 set the seed in node.cc, for the flag above.
+        self.assertTrue("--random_seed=" in self.text or "kGeneratePredictableSnapshot" in self.text,
+                        "node_mksnapshot does not fix the random seed")
+
+
 class Options(SourceCase):
     @classmethod
     def setUpClass(cls):

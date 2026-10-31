@@ -21,7 +21,8 @@ MAKE_PATCHES = Path(os.environ["MAKE_PATCHES"])
 PATCHES = [Path(p) for p in os.environ["PATCHES"].split()]
 MAJORS = [str(line["major"]) for line in VERSIONS]
 TRUST_PATCHES = {"0001-empty-root-certs.patch", "0002-force-local-store.patch"}
-OLD_V8_PATCHES = {"0003-libcxx-19-char-traits.patch", "0004-zlib-macos-test.patch"}
+OLD_V8_PATCHES = {"0003-libcxx-19-char-traits.patch", "0004-zlib-macos-test.patch",
+                  "0005-predictable-snapshot.patch"}
 
 
 def prose(majors):

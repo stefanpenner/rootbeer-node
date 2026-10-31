@@ -38,12 +38,14 @@ def rootbeer_tests(major, version):
         data = [
             source + "node_root_certs_h_%d" % major,
             source + "crypto_context_cc_%d" % major,
+            source + "node_mksnapshot_cc_%d" % major,
             source + "node_options_cc_%d" % major,
             source + "openssl_common_gypi_%d" % major,
         ],
         env = {
             "ROOT_CERTS_H": "$(rootpath %snode_root_certs_h_%d)" % (source, major),
             "CRYPTO_CONTEXT_CC": "$(rootpath %scrypto_context_cc_%d)" % (source, major),
+            "NODE_MKSNAPSHOT_CC": "$(rootpath %snode_mksnapshot_cc_%d)" % (source, major),
             "NODE_OPTIONS_CC": "$(rootpath %snode_options_cc_%d)" % (source, major),
             "OPENSSL_COMMON_GYPI": "$(rootpath %sopenssl_common_gypi_%d)" % (source, major),
         },
