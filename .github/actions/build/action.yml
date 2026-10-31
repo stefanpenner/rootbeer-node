@@ -15,14 +15,14 @@ runs:
       shell: bash
       run: |
         # .bazelrc asks for 10 CPUs. Use what the machine has.
-        bazel build --lockfile_mode=off --jobs=HOST_CPUS --local_resources=cpu=HOST_CPUS \
+        bazel build --jobs=HOST_CPUS --local_resources=cpu=HOST_CPUS \
           --local_resources=memory=HOST_RAM*.8 \
           //node:rootbeer_${{ inputs.node }} //node:dist_${{ inputs.node }} --output_groups=+dist
 
     - name: Test Node ${{ inputs.node }}
       shell: bash
       run: |
-        bazel test --lockfile_mode=off --jobs=HOST_CPUS --local_resources=cpu=HOST_CPUS \
+        bazel test --jobs=HOST_CPUS --local_resources=cpu=HOST_CPUS \
           --local_resources=memory=HOST_RAM*.8 \
           //tests:source_${{ inputs.node }}_test \
           //tests:hermetic_${{ inputs.node }}_test \

@@ -33,6 +33,25 @@ py_test(
 )
 
 py_test(
+    name = "bazel_config_test",
+    srcs = ["bazel_config_test.py"],
+    data = [
+        "//:.bazelrc",
+        "//:.gitignore",
+        "//:MODULE.bazel.lock",
+        "//:README.md",
+        "//.github/actions/build:action.yml",
+    ],
+    env = {
+        "BAZELRC": "$(rootpath //:.bazelrc)",
+        "GITIGNORE": "$(rootpath //:.gitignore)",
+        "LOCKFILE": "$(rootpath //:MODULE.bazel.lock)",
+        "TEXTS": "readme=$(rootpath //:README.md) build_action=$(rootpath //.github/actions/build:action.yml)",
+    },
+    size = "small",
+)
+
+py_test(
     name = "docker_test",
     srcs = ["docker_test.py"],
     data = [
