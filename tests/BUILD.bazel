@@ -17,8 +17,16 @@ py_library(
 py_test(
     name = "ci_test",
     srcs = ["ci_test.py"],
-    data = ["//.github/workflows:ci.yml"],
-    env = {"WORKFLOW": "$(rootpath //.github/workflows:ci.yml)"},
+    data = [
+        "//:.bazelversion",
+        "//.github/actions/build:action.yml",
+        "//.github/workflows:ci.yml",
+    ],
+    env = {
+        "BAZELVERSION": "$(rootpath //:.bazelversion)",
+        "BUILD_ACTION": "$(rootpath //.github/actions/build:action.yml)",
+        "WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
+    },
     size = "small",
 )
 

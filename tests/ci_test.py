@@ -10,9 +10,12 @@ import unittest
 from pathlib import Path
 
 WORKFLOW = Path(os.environ["WORKFLOW"]).read_text()
+ACTION = Path(os.environ["BUILD_ACTION"]).read_text()
+BAZEL_VERSION = Path(os.environ["BAZELVERSION"]).read_text().strip()
 HOSTED = re.compile(r"^(ubuntu|macos|windows)-[a-z0-9.]+$")
 NOT_PR = "github.event_name != 'pull_request'"
 ONLY_PR = "github.event_name == 'pull_request'"
+RUNNER_VARIABLE = "${{ vars.CI_RUNS_ON || '\"ubuntu-latest\"' }}"
 
 
 def triggers():
@@ -25,6 +28,11 @@ def jobs():
     body = WORKFLOW.split("\njobs:\n", 1)[1]
     parts = re.split(r"^  ([a-z0-9_-]+):\n", body, flags=re.MULTILINE)
     return dict(zip(parts[1::2], parts[2::2]))
+
+
+def matrix_list(text, key):
+    match = re.search(rf"^        {key}: \[(.*)\]$", text, re.MULTILINE)
+    return [item.strip() for item in match.group(1).split(",")] if match else []
 
 
 def field(text, name):
@@ -58,7 +66,20 @@ class PullRequestJobs(unittest.TestCase):
     def test_pull_request_jobs_use_a_hosted_runner(self):
         for name, text in jobs().items():
             if field(text, "if") == ONLY_PR:
-                self.assertRegex(field(text, "runs-on"), HOSTED, name)
+                runs_on = field(text, "runs-on")
+                if runs_on == "${{ matrix.os }}":
+                    systems = matrix_list(text, "os")
+                    self.assertTrue(systems, name)
+                    for system in systems:
+                        self.assertRegex(system, HOSTED, name)
+                else:
+                    self.assertRegex(runs_on, HOSTED, name)
+
+    def test_pull_request_jobs_never_read_the_runner_variable(self):
+        for name, text in jobs().items():
+            if field(text, "if") == ONLY_PR:
+                self.assertNotIn("vars.", text, name)
+                self.assertNotIn("self-hosted", text, name)
 
 
 class PushJobs(unittest.TestCase):
@@ -68,19 +89,97 @@ class PushJobs(unittest.TestCase):
 
     def test_only_push_jobs_read_the_runner_variable(self):
         for name, text in jobs().items():
-            runs_on = field(text, "runs-on")
-            if "vars." in runs_on or "self-hosted" in runs_on:
+            if "vars." in text or "self-hosted" in text:
                 self.assertEqual(field(text, "if"), NOT_PR, name)
                 self.assertNotIn("environment", text, name)
 
     def test_push_jobs_use_the_runner_variable_with_a_hosted_fallback(self):
-        selected = [t for t in jobs().values() if field(t, "if") == NOT_PR]
+        selected = {n: t for n, t in jobs().items() if field(t, "if") == NOT_PR}
         self.assertTrue(selected)
-        for text in selected:
-            self.assertEqual(
-                field(text, "runs-on"),
-                "${{ fromJSON(vars.CI_RUNS_ON || '\"ubuntu-latest\"') }}",
-            )
+        for name, text in selected.items():
+            runs_on = field(text, "runs-on")
+            if runs_on == "${{ fromJSON(matrix.runs_on) }}":
+                # Only Linux uses the variable. macOS stays on GitHub.
+                self.assertIn(f"        runs_on: {RUNNER_VARIABLE}\n", text, name)
+                self.assertIn("        runs_on: '\"macos-14\"'\n", text, name)
+            else:
+                self.assertEqual(runs_on, "${{ fromJSON(vars.CI_RUNS_ON || '\"ubuntu-latest\"') }}", name)
+
+
+class Build(unittest.TestCase):
+    def build_jobs(self):
+        return {n: t for n, t in jobs().items() if "matrix" in t}
+
+    def test_both_events_have_a_build_matrix(self):
+        events = {field(t, "if") for t in self.build_jobs().values()}
+        self.assertEqual(events, {ONLY_PR, NOT_PR})
+
+    def test_matrix_covers_every_node_line(self):
+        for name, text in self.build_jobs().items():
+            self.assertEqual(matrix_list(text, "node"), ["16", "18", "20", "22"], name)
+
+    def test_matrix_covers_macos_and_linux(self):
+        for name, text in self.build_jobs().items():
+            self.assertIn("macos-14", matrix_list(text, "os"), name)
+            linux = [o for o in matrix_list(text, "os") if o.startswith(("linux", "ubuntu"))]
+            self.assertTrue(linux, name)
+
+    def test_build_jobs_use_the_build_action(self):
+        for name, text in self.build_jobs().items():
+            self.assertIn("uses: ./.github/actions/build", text, name)
+            self.assertIn("node: ${{ matrix.node }}", text, name)
+
+    def test_build_jobs_do_not_wait_for_each_other(self):
+        # One approval must release every waiting job of a pull request.
+        for name, text in self.build_jobs().items():
+            self.assertNotIn("needs:", text, name)
+
+    def test_build_jobs_keep_going_when_one_leg_fails(self):
+        for name, text in self.build_jobs().items():
+            self.assertIn("fail-fast: false", text, name)
+
+    def test_build_jobs_have_a_long_timeout(self):
+        for name, text in self.build_jobs().items():
+            self.assertGreaterEqual(int(field(text, "timeout-minutes")), 90, name)
+
+
+class BuildAction(unittest.TestCase):
+    def test_bazel_comes_from_a_pinned_release(self):
+        self.assertIn(f"/releases/download/{BAZEL_VERSION}/bazel-{BAZEL_VERSION}-", ACTION)
+        self.assertIn("darwin-arm64", ACTION)
+        self.assertIn("linux-x86_64", ACTION)
+
+    def test_each_bazel_download_has_a_sha256(self):
+        checksums = re.findall(r"\b[0-9a-f]{64}\b", ACTION)
+        self.assertGreaterEqual(len(set(checksums)), 2)
+        self.assertRegex(ACTION, r"shasum -a 256 -c")
+
+    def test_no_bazelisk_and_no_unpinned_download(self):
+        self.assertNotIn("bazelisk", ACTION.lower())
+        self.assertNotIn("/latest", ACTION)
+
+    def test_build_runs_the_tests_and_uploads_the_artifact(self):
+        self.assertIn("bazel build", ACTION)
+        self.assertIn("--output_groups=+dist", ACTION)
+        self.assertIn("//tests:source_${{ inputs.node }}_test", ACTION)
+        self.assertIn("//tests:hermetic_${{ inputs.node }}_test", ACTION)
+        self.assertIn("upload-artifact@", ACTION)
+        self.assertIn("if-no-files-found: error", ACTION)
+
+    def test_build_fits_the_machine(self):
+        # .bazelrc asks for 10 CPUs. A runner has 2 to 4.
+        self.assertIn("--local_resources=cpu=HOST_CPUS", ACTION)
+        self.assertIn("--jobs=HOST_CPUS", ACTION)
+
+
+class PinnedActions(unittest.TestCase):
+    def test_every_action_has_a_commit_sha(self):
+        for text in (WORKFLOW, ACTION):
+            for use in re.findall(r"^\s+(?:- )?uses: (\S+)", text, re.MULTILINE):
+                if use.startswith("./"):
+                    continue
+                self.assertRegex(use, r"@[0-9a-f]{40}$", use)
+
 
     def test_no_job_hardcodes_self_hosted(self):
         self.assertNotRegex(WORKFLOW, r"runs-on: \[?\s*self-hosted")
