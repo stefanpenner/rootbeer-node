@@ -139,6 +139,20 @@ py_test(
 )
 
 py_test(
+    name = "make_patches_test",
+    srcs = ["make_patches_test.py"],
+    data = [
+        "//bazel:build_node.py",
+        "//tools:make_patches.py",
+    ],
+    env = {
+        "BUILD_NODE": "$(rootpath //bazel:build_node.py)",
+        "MAKE_PATCHES": "$(rootpath //tools:make_patches.py)",
+    },
+    size = "small",
+)
+
+py_test(
     name = "add_node_version_test",
     srcs = ["add_node_version_test.py"],
     data = [

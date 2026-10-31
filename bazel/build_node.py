@@ -209,6 +209,10 @@ def configure_flags(tree):
     flags = ["--ninja", "--openssl-use-def-ca-store", "--without-npm", "--without-corepack"]
     if "--without-dtrace" in text:
         flags.append("--without-dtrace")
+    # Node 26 looks for cargo on PATH, and Temporal needs Rust. This build declares no Rust.
+    # The flag makes the choice explicit, so a host cargo cannot change it.
+    if "--v8-disable-temporal-support" in text:
+        flags.append("--v8-disable-temporal-support")
     return flags
 
 
