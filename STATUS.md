@@ -14,7 +14,7 @@ Bazel targets and artifact names keep the `rootbeer` prefix.
 
 | Node | macOS arm64 | Linux x86_64 | Linux evidence |
 |---|---|---|---|
-| 26.13.0 | untested | untested | None. CI has not run this line. A remote build stopped at the 1800 s scheduler limit. |
+| 26.13.0 | pass | untested | None. CI has not run this line. A remote build stopped at the 1800 s scheduler limit. |
 | 24.22.2 | untested | untested | None. CI has not run this line. |
 | 22.23.4 | pass | pass | Docker on the Mac, emulated, earlier image |
 | 20.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner |
@@ -24,6 +24,7 @@ Bazel targets and artifact names keep the `rootbeer` prefix.
 - The results for 16, 18, 20, and 22 are from commit `8c71c7c` (2026-10-30). Later commits changed the build.
   - #13 made the action environment strict, and #15 and #16 removed build paths from the binary.
   - After these commits, the macOS 22 build passes `BuildPaths`. CI has not run on any of them, so Linux is not checked again.
+- The macOS 26 result is from commit `60cffa4` (2026-10-31), so it has the changes above and the SDK inputs of #18.
 - The macOS results come from this Mac, under Bazel.
 - CI run: https://github.com/stefanpenner/rootbeer-node/actions/runs/41165079670
 - The CI commit `65c88ba` has the same tree as `8c71c7c`.
@@ -34,18 +35,21 @@ Cold build, one action for each line:
 
 | Node | macOS arm64 | Linux x86_64 |
 |---|---|---|
+| 26.13.0 | 3768 s (not a clean measurement) | stopped at 1810 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
 | 22.23.4 | 1250 s | 6704 s (Docker on the Mac, emulated, 5 compile jobs) |
 | 20.20.2 | 920 s | 3711 s (CI) |
 | 18.20.8 | 853 s | 2375 s (CI) |
 | 16.20.2 | 784 s | 2565 s (CI), about 15 min (remote host, 4 CPUs, 8 GB), 759 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
 
 The macOS 18 and 16 times overlapped a Linux build, so they are not clean measurements.
+The macOS 26 time overlapped other builds, and the host load average was above 300.
 A cache hit took 4 to 5 s for the four macOS dist targets of 16, 18, 20, and 22 together.
 
 Test times on macOS arm64:
 
 | Node | source | hermetic | network |
 |---|---|---|---|
+| 26.13.0 | 1.4 s | 32.3 s | 38.7 s |
 | 22.23.4 | 0.4 s | 3.3 s | 25.1 s |
 | 20.20.2 | 0.6 s | 3.5 s | 26.2 s |
 | 18.20.8 | 0.5 s | 3.5 s | 27.7 s |

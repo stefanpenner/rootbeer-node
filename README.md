@@ -57,7 +57,7 @@ Each checksum comes from the release `SHASUMS256.txt`.
 
 | Line | Version | Source sha256 | macOS arm64 | Linux x86_64 |
 |---|---|---|---|---|
-| 26 | 26.13.0 | `986ead18ef18256831bae3e57d94aef680a7b84cfd4044f3e8471f833fbd7191` | untested | untested |
+| 26 | 26.13.0 | `986ead18ef18256831bae3e57d94aef680a7b84cfd4044f3e8471f833fbd7191` | pass | untested |
 | 24 | 24.22.2 | `b2f5443a34a38d863e87c0f5f80c03630fc16917dfe16f26c1cec44c0b542959` | untested | untested |
 | 22 | 22.23.4 | `4dd79de8cdc85d65cb32f48a75aee1067bf00bf94b96ecc8e4c2f82f6f0272c2` | pass | pass |
 | 20 | 20.20.2 | `8cb85a81f75169eb811f7b2512cf17a646826430debbe016a7461f31e286fdef` | pass | pass |
