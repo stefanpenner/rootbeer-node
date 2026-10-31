@@ -161,33 +161,12 @@ I found no flag for that. Upstream needed V8 changes (Node 20 and later).
 
 ## Remote execution
 
-`//platforms:linux_x64_rbe` is a Linux x86_64 platform with `OSFamily=linux` and a pinned `container-image`.
-`--config=remote-exec` makes it the target, host, and execution platform, and uses no local fallback.
-The endpoint and the keys belong in `~/.bazelrc`.
+The Node build does not support remote execution. Build it on a local Linux host, or in CI.
+`--config=remote-exec` remains for experiments, and no test covers a remote build.
 
-- The Node build is one action. On Linux it runs 5 compile jobs.
-- `resource_set` (10 CPUs, 16 GB) applies only to local execution. The scheduler does not read it.
-- The properties of the platform must match the properties of the worker exactly. The scheduler does not guess.
 - The macOS build cannot run remotely, because the SDK comes from the host (rung 6).
-
-What a real run shows, on a Buildbarn runner with a cap of 6 CPUs and 8 GiB:
-
-| Item | Result |
-|---|---|
-| `bazel build --config=remote-exec //node:rootbeer_16` | Pass. 758.8 s. Peak memory 3.0 GiB. |
-| The same action, new output base, remote cache hit | 18.0 s. |
-| `bazel build --config=remote-exec //node:rootbeer_26` | Fail. The scheduler stopped the action after 1810 s. Peak memory 5.7 GiB. |
-| Other lines | See STATUS.md. |
-
-Limits:
-
-- `bazel test --config=remote-exec` fails in analysis. `@bazel_tools//third_party/ijar` asks for a C++ toolchain, and none is registered.
-  So the hermetic and network tests do not run remotely. A smoke test of the Node 16 binary in a capped container passed.
-  That smoke test is not the hermetic test.
-- The scheduler limit is the real limit, not memory. The SER9 scheduler stops an action at 1800 s by default.
-  - The Bazel flag `--remote_timeout` does not change this limit.
-  - A rule cannot change it. Bazel 9.1.1 removes the `timeout` key from `execution_requirements` (`TargetUtils.legalExecInfoKeys`).
-  - A build that needs more than 1800 s needs a higher `defaultExecutionTimeout` in the scheduler configuration.
+- `bazel test --config=remote-exec` fails in analysis, because no C++ toolchain is registered.
+- The remote cache still works for local builds. A cache hit takes 5 to 18 s.
 
 ## Linux container
 
