@@ -152,6 +152,8 @@ def build_env(args, scratch, rust, bin_dir, cargo_home, vendor, llvm, sdk):
         "CARGO_NET_OFFLINE": "true",
         "CARGO_INCREMENTAL": "0",
         "RUSTC": os.path.join(rust, "bin", "rustc"),
+        # Cargo reads each parent config. An empty value stops a host compiler wrapper.
+        "RUSTC_WRAPPER": "",
         "CARGO_ENCODED_RUSTFLAGS": rust_flags(scratch, vendor, cc),
         # The packed debug info needs dsymutil, and debug info holds the build path.
         "CARGO_PROFILE_RELEASE_DEBUG": "false",
