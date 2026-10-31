@@ -132,6 +132,9 @@ def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, ol
     if args.os == "darwin":
         # A static libc++ with chained fixups crashes at startup on Darwin 27. See docs/HERMETICITY.md.
         link_flags += ["-Wl,-no_fixup_chains"]
+        # Without -S, lld records the path of every object file in the symbol table (N_OSO), and
+        # those paths are the sandbox path of this build.
+        link_flags += ["-Wl,-S"]
     else:
         link_flags += ["-lpthread", "-ldl", "-lm"]
 
