@@ -1,1 +1,18 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python:py_library.bzl", "py_library")
+
 exports_files(glob(["*.py", "*.js"]))
+
+py_library(
+    name = "repro_check_lib",
+    srcs = ["repro_check.py"],
+    imports = ["."],
+    visibility = ["//tests:__pkg__"],
+)
+
+# bazel run //tools:repro_check -- 22
+py_binary(
+    name = "repro_check",
+    srcs = ["repro_check.py"],
+    main = "repro_check.py",
+)

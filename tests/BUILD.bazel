@@ -54,6 +54,13 @@ py_test(
 )
 
 py_test(
+    name = "repro_check_test",
+    srcs = ["repro_check_test.py"],
+    deps = ["//tools:repro_check_lib"],
+    size = "small",
+)
+
+py_test(
     name = "docker_test",
     srcs = ["docker_test.py"],
     data = [
