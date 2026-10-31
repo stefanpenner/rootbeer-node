@@ -2,7 +2,7 @@
 
 > **Why the name.** Root certs are removed. Node is left. So: rootbeer-node. It trusts only the root store on your system.
 
-Node.js 16, 18, 20, and 22 with no bundled root certificates.
+Node.js 16, 18, 20, 22, 24, and 26 with no bundled root certificates.
 Each binary trusts only the local (system) trust store.
 
 Stock Node trusts its own list of roots. Ours trusts what your host trusts.
@@ -53,6 +53,8 @@ Each checksum comes from the release `SHASUMS256.txt`.
 
 | Line | Version | Source sha256 | macOS arm64 | Linux x86_64 |
 |---|---|---|---|---|
+| 26 | 26.13.0 | `986ead18ef18256831bae3e57d94aef680a7b84cfd4044f3e8471f833fbd7191` | untested | untested |
+| 24 | 24.22.2 | `b2f5443a34a38d863e87c0f5f80c03630fc16917dfe16f26c1cec44c0b542959` | untested | untested |
 | 22 | 22.23.4 | `4dd79de8cdc85d65cb32f48a75aee1067bf00bf94b96ecc8e4c2f82f6f0272c2` | pass | pass |
 | 20 | 20.20.2 | `8cb85a81f75169eb811f7b2512cf17a646826430debbe016a7461f31e286fdef` | pass | pass |
 | 18 | 18.20.8 | `ec60a6d2344ef9e1f093991ca1bb6bbe92c61c29d1762c4b99e08f87dbb91e2f` | pass | pass |
@@ -119,7 +121,7 @@ Builds are not proven reproducible.
 
 ## CI
 
-- Each run builds Node 16, 18, 20, and 22 on macOS 14 and Linux.
+- Each run builds Node 16, 18, 20, 22, 24, and 26 on macOS 14 and Linux.
   It runs the three tests, then uploads the archive.
 - A pull request waits for the owner to approve it in the `pr-approval` environment.
 - A pull request never uses a self-hosted runner. `tests/ci_test.py` checks this.

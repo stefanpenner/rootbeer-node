@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [16, 18, 20, 22]
+        node: [16, 18, 20, 22, 24, 26]
         os: [macos-14, linux]
         include:
           - os: macos-14
@@ -64,7 +64,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [16, 18, 20, 22]
+        node: [16, 18, 20, 22, 24, 26]
         os: [macos-14, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
