@@ -128,6 +128,10 @@ class LocalStoreOnly(unittest.TestCase):
         env = store_env(CA, self.empty_dir)
         self.assertTrue(loopback(ROOTBEER, BUNDLED_FLAG, env=env)["trusted"])
 
+    def test_negated_store_flag_keeps_the_local_store(self):
+        env = store_env(CA, self.empty_dir)
+        self.assertTrue(loopback(ROOTBEER, "--no-use-openssl-ca", env=env)["trusted"])
+
     def test_ssl_cert_dir_supplies_trust(self):
         hashed_dir = crypto_bundle.hashed_dir(CA)
         env = store_env(EMPTY, hashed_dir)

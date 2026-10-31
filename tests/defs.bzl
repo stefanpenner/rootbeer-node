@@ -29,6 +29,27 @@ def rootbeer_tests(major, version):
         "EMSIGN_STORE": "$(rootpath fixtures/emsign-roots.pem)",
     }
 
+    source = "@node_%d//:" % major
+    py_test(
+        name = "source_%d_test" % major,
+        srcs = ["source/patch_test.py"],
+        main = "source/patch_test.py",
+        deps = [":trustlib"],
+        data = [
+            source + "src/node_root_certs.h",
+            source + "src/crypto/crypto_context.cc",
+            source + "src/node_options.cc",
+            source + "deps/openssl/openssl_common.gypi",
+        ],
+        env = {
+            "ROOT_CERTS_H": "$(rootpath %ssrc/node_root_certs.h)" % source,
+            "CRYPTO_CONTEXT_CC": "$(rootpath %ssrc/crypto/crypto_context.cc)" % source,
+            "NODE_OPTIONS_CC": "$(rootpath %ssrc/node_options.cc)" % source,
+            "OPENSSL_COMMON_GYPI": "$(rootpath %sdeps/openssl/openssl_common.gypi)" % source,
+        },
+        size = "small",
+    )
+
     py_test(
         name = "hermetic_%d_test" % major,
         srcs = ["hermetic_test.py"],
