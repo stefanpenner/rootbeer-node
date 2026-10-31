@@ -120,11 +120,62 @@ The measured floor of the current builds is glibc 2.25.
   - I did not test other macOS versions. The flag is correct on all of them, and the cost is a larger relocation table.
 - The LLVM libc++.a objects target macOS 14.0, and the linker warns about this.
   The practical minimum for the macOS artifacts is macOS 14.
-- The build does not prove byte-for-byte reproducibility.
-  The driver sets `SOURCE_DATE_EPOCH`, `ZERO_AR_DATE`, and `-ffile-prefix-map`.
-  No test compares two builds.
+- Byte-for-byte reproducibility is checked by a tool, not by a test. See [Reproducibility](#reproducibility).
 - Node's `OPENSSLDIR` value comes from Node's own OpenSSL configuration.
   It is `/etc/ssl` on macOS and on Linux. This is a host path by design.
+
+## Bazel settings
+
+`.bazelrc` sets these. `tests/bazel_config_test.py` and `tests/repo_rules_test.py` check them.
+
+| Setting | Effect |
+|---|---|
+| `common --lockfile_mode=error` | `MODULE.bazel.lock` is committed. A stale lock fails the build. It pins every registry file by hash. |
+| `build --incompatible_strict_action_env` | An action sees a fixed `PATH`, not the `PATH` of the user. `node_build` also sets `use_default_shell_env = False`. |
+| `build --sandbox_default_allow_network=false` | An action cannot use the network. The default sandbox allows it. A probe action reaches a host without the flag and fails with it. The network tests carry `requires-network`, so they keep their access. |
+| `common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1` | The build does not look for a host C++ compiler. |
+
+Every `http_archive` has a `sha256`. No repository rule downloads without a checksum, and no source comes from a Git ref.
+
+## Reproducibility
+
+The binary must not hold a path of the build machine. `BuildPaths` in `tests/hermetic_test.py` fails when it holds
+`/execroot/`, `bazel-out/`, or a sandbox path. It found three leaks:
+
+- OpenSSL 3 `MODULESDIR` (Node 18, 20, 22). `0002-force-local-store.patch` sets it to `/nonexistent/ossl-modules`.
+- The sysroot path in compiler output. The wrapper adds `-ffile-prefix-map={sysroot}=/sysroot`.
+- The object paths that lld writes in the Mach-O symbol table (N_OSO). The link adds `-Wl,-S`.
+
+`bazel run //tools:repro_check -- 22` builds one line twice, with no cache. The two workspaces have different paths
+and path lengths, and different output bases. It compares the archives, and for a difference it lists the strings that
+only one binary holds. `--compare A B` compares two existing archives, for example one from CI and one from a laptop.
+
+Results, macOS arm64, no cache, two different paths:
+
+| Line | Result |
+|---|---|
+| 16 | Not reproducible. 220,725 of 70,772,032 bytes differ, all in the startup snapshot (`node::blob_data`). |
+| 18 | Not run. It has the same V8 snapshot patch as 16. |
+| 20 | Not run. |
+| 22 | Build A done. Build B was stopped by mistake and runs again. The result is not recorded yet. |
+| Linux, all lines | Not run. |
+
+The startup snapshot is the cause for Node 16. Node 16 and 18 fix the V8 random seed but do not pass `--predictable`.
+Before `0005-predictable-snapshot.patch`, the snapshot changed its length between builds, and the ICU data
+after it moved: 19.7 MB differed. The patch fixes the length. The content is still not deterministic in the old V8.
+I found no flag for that. Upstream needed V8 changes (Node 20 and later).
+
+## Remote execution
+
+`//platforms:linux_x64_rbe` is a Linux x86_64 platform with `OSFamily=linux` and a pinned `container-image`.
+`--config=remote-exec` makes it the target, host, and execution platform, and uses no local fallback.
+The endpoint and the keys belong in `~/.bazelrc`.
+
+- The Node build is one action. It asks for 10 CPUs and 16 GB. An executor with less memory cannot run it.
+  The current SER9 worker has 8 GiB. I did not run the full build there, and I expect it to be too small.
+  Only the analysis was checked: `bazel aquery --config=remote-exec` shows the Linux execution platform and the Linux outputs.
+- The macOS build cannot run remotely, because the SDK comes from the host (rung 6).
+- The properties of the platform must match the properties of the worker exactly. The scheduler does not guess.
 
 ## Linux container
 
@@ -166,4 +217,4 @@ For this reason `/bin/sh` is `dash`, and the image has no `ar` link.
 - The Bazel sandbox inside Docker is `processwrapper-sandbox`. It does not hide host read paths.
 - BusyBox applets have different options than GNU tools. A new build step can need a GNU option.
 - `snapshot.debian.org` is a single host. The checksums stop a changed file but cannot stop an outage.
-- No test compares two builds, so the image content is not proven reproducible byte for byte.
+- `tools/repro_check.py` compares two builds, but it has not run on Linux. The image content is not proven reproducible byte for byte.

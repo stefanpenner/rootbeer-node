@@ -17,13 +17,18 @@ _STOCK_BUILD = 'exports_files(["bin/node"])'
 _SOURCE_FILES = {
     "configure": "configure.py",
     "crypto_context_cc": "src/crypto/crypto_context.cc",
+    "node_mksnapshot_cc": "tools/snapshot/node_mksnapshot.cc",
     "node_options_cc": "src/node_options.cc",
     "node_root_certs_h": "src/node_root_certs.h",
     "openssl_common_gypi": "deps/openssl/openssl_common.gypi",
 }
 
 _TRUST_PATCHES = ["0001-empty-root-certs.patch", "0002-force-local-store.patch"]
-_OLD_V8_PATCHES = ["0003-libcxx-19-char-traits.patch", "0004-zlib-macos-test.patch"]
+_OLD_V8_PATCHES = [
+    "0003-libcxx-19-char-traits.patch",
+    "0004-zlib-macos-test.patch",
+    "0005-predictable-snapshot.patch",
+]
 
 def _stock(name, version, platform, sha256):
     stem = "node-v%s-%s" % (version, platform)

@@ -16,7 +16,12 @@ config_setting(
     ],
 )
 
-exports_files(["build_node.py", "BUILD.bazel"])
+exports_files([
+    "BUILD.bazel",
+    "build_node.py",
+    "node_versions.bzl",
+    "sdk.bzl",
+])
 
 alias(
     name = "llvm",

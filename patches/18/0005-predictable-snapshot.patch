@@ -1,0 +1,11 @@
+diff --git a/tools/snapshot/node_mksnapshot.cc b/tools/snapshot/node_mksnapshot.cc
+--- a/tools/snapshot/node_mksnapshot.cc
++++ b/tools/snapshot/node_mksnapshot.cc
+@@ -52,6 +52,7 @@
+ #endif  // _WIN32
+ 
+   v8::V8::SetFlagsFromString("--random_seed=42");
++  v8::V8::SetFlagsFromString("--predictable");
+   v8::V8::SetFlagsFromString("--harmony-import-assertions");
+   return BuildSnapshot(argc, argv);
+ }
