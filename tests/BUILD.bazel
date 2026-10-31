@@ -99,6 +99,54 @@ py_test(
 )
 
 py_test(
+    name = "pinned_sdk_test",
+    srcs = ["pinned_sdk_test.py"],
+    data = [
+        "//:.bazelrc",
+        "//.github/workflows:ci.yml",
+        "//bazel:sdk.bzl",
+    ],
+    env = {
+        "BAZELRC": "$(rootpath //:.bazelrc)",
+        "CI_WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
+        "SDK_BZL": "$(rootpath //bazel:sdk.bzl)",
+    },
+    size = "small",
+)
+
+# Runs Bazel in a temporary workspace with a fake tarball. See the docstring of pinned_sdk_repo_test.py.
+py_test(
+    name = "pinned_sdk_repo_test",
+    srcs = ["pinned_sdk_repo_test.py"],
+    data = [
+        "//:.bazelversion",
+        "//bazel:sdk.bzl",
+    ],
+    env = {
+        "BAZEL_VERSION_FILE": "$(rootpath //:.bazelversion)",
+        "SDK_BZL": "$(rootpath //bazel:sdk.bzl)",
+    },
+    size = "large",
+    tags = [
+        "external",
+        "local",
+        "manual",
+        "no-cache",
+        "no-remote",
+        "no-sandbox",
+        "requires-network",
+    ],
+)
+
+py_test(
+    name = "pack_macos_sdk_test",
+    srcs = ["pack_macos_sdk_test.py"],
+    data = ["//tools:pack_macos_sdk.py"],
+    env = {"PACK_MACOS_SDK": "$(rootpath //tools:pack_macos_sdk.py)"},
+    size = "small",
+)
+
+py_test(
     name = "repro_check_test",
     srcs = ["repro_check_test.py"],
     deps = ["//tools:repro_check_lib"],

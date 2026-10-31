@@ -128,7 +128,7 @@ v16.20.2 openssl=1.1.1v+quic roots=0  --use-bundled-ca roots=0
 
 The build is not fully hermetic. `docs/HERMETICITY.md` gives the rung of each input.
 
-- The macOS SDK comes from the host. The Apple license does not allow a pinned copy.
+- The macOS SDK comes from the host by default. The Apple license does not allow a public copy. `--config=pinned-sdk` selects a private tarball (opt-in). See `docs/HERMETICITY.md`.
 - The macOS POSIX tools come from the host. The result does not record their versions.
 - The Bazel sandboxes do not hide host read paths.
 - No test compares two builds. `tools/repro_check.py` does it by hand. Node 22 on macOS gave the same bytes, and Node 16 did not.
