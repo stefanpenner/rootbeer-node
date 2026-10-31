@@ -5,3 +5,12 @@ exports_files(
     ],
     visibility = ["//tests:__pkg__"],
 )
+
+filegroup(
+    name = "context",
+    srcs = glob([
+        "bin/*",
+        "etc/*",
+    ]),
+    visibility = ["//tests:__pkg__"],
+)

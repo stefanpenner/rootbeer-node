@@ -28,7 +28,11 @@ Each input has a rung. A lower rung is stronger.
 | Test CA bundle | `trust/`, derived from curl `cacert.pem` | 0 |
 | Tool wrappers | `bazel/build_node.py` | 2 |
 | macOS SDK | Host | 6 |
-| `/bin` and `/usr/bin` POSIX tools | Host | 6 |
+| Linux image: Bazel 9.1.1 | GitHub release, sha256 in `docker/Dockerfile` | 0 |
+| Linux image: BusyBox, glibc, libstdc++, zlib, zstd, xz, libxml2, ICU | `snapshot.debian.org` `.deb` files, sha256 in `docker/Dockerfile` | 0 |
+| Linux image: unpack stage | `debian:bookworm-slim`, pinned by digest. It runs `dpkg-deb` and `ln` only. | 0 |
+| Linux image: CA bundle | `trust/mozilla-no-emsign.pem` | 0 |
+| macOS: `/bin` and `/usr/bin` POSIX tools | Host | 6 |
 
 The LLVM release page publishes no usable digest through the GitHub API.
 I computed the LLVM checksums from the downloads.
@@ -54,8 +58,9 @@ A host that has only such an SDK fails with a clear message.
 
 The action `PATH` holds the tool wrappers, then `/usr/bin`, then `/bin`.
 Node's configure and build steps call `sh`, `sed`, `cp`, `mkdir`, and similar tools.
-These tools come from the host.
-The result does not record their versions.
+
+- **Linux:** The build image supplies these tools. They are BusyBox, pinned by checksum (rung 0).
+- **macOS:** These tools come from the host. The result does not record their versions (rung 6).
 
 ### Sandbox limits
 
@@ -102,12 +107,39 @@ The sysroot sets the glibc floor at version 2.31.
 
 ## Linux container
 
-`docker/Dockerfile` supplies Bazel, the POSIX tools, and a CA store.
-The base image is pinned by digest, and the Bazel binary is pinned by checksum.
-`apt-get` packages in that image are not pinned.
-They run tools only. The image holds no compiler.
+`docker/Dockerfile` makes a small image that holds only pinned files.
+It has no package manager, no shell other than BusyBox, and no compiler.
 
-The pinned LLVM Linux tools are dynamic programs.
-They load `libstdc++`, `libz`, `libzstd`, and `libxml2` from the image.
-`ld.lld` fails with a missing `libxml2.so.2` error when the image does not supply it.
-These libraries are rung 6 inputs. Their versions are not recorded.
+| Input | How it is pinned |
+|---|---|
+| Unpack stage | `FROM` image with a `@sha256:` digest. It runs `dpkg-deb -x` and `ln` only. |
+| Final stage | `FROM scratch`. Only `COPY` adds files. |
+| Bazel | `ADD --checksum=sha256:`. This binary has its own JDK. |
+| BusyBox and libraries | One `ADD --checksum=sha256:` for each `.deb`. |
+| `.deb` address | `snapshot.debian.org/archive/debian/<timestamp>/`. The address cannot change. |
+| CA bundle | `COPY trust/mozilla-no-emsign.pem`. It is the pinned test bundle of this repository. |
+| `passwd`, `group`, `nsswitch.conf`, `bash` | `docker/etc/` and `docker/bin/` in this repository. |
+
+The packages are `libc6`, `libgcc-s1`, `libstdc++6`, `zlib1g`, `libzstd1`, `liblzma5`,
+`libxml2`, `libicu72`, and `busybox-static`. The pinned LLVM Linux tools load these libraries.
+`ld.lld` needs `libxml2`, `libicu72`, and `liblzma5`. The other tools need `libstdc++`, `libz`, and `libzstd`.
+
+`tools/pin_debs.py` prints the `ADD` lines for a snapshot timestamp.
+A reviewer can run it again and compare the checksums.
+This tool is the only step that reads an index that is not pinned. The build never runs it.
+
+`tests/docker_test.py` fails the build when a `FROM` has no digest,
+an `ADD` has no checksum, a `.deb` does not come from the snapshot archive,
+or a `RUN` calls `apt`, `curl`, or another tool that fetches inputs.
+
+BusyBox has no `find -delete` and no `bash`.
+`MODULE.bazel` uses `find -exec rm -f {} +`.
+`docker/bin/bash` is a two-line wrapper for `sh`, because Bazel runs `patch_cmds` with `bash`.
+
+### Remaining Linux gaps
+
+- Docker, the kernel, and the CPU come from the host.
+- The Bazel sandbox inside Docker is `processwrapper-sandbox`. It does not hide host read paths.
+- BusyBox applets have different options than GNU tools. A new build step can need a GNU option.
+- `snapshot.debian.org` is a single host. The checksums stop a changed file but cannot stop an outage.
+- No test compares two builds, so the image content is not proven reproducible byte for byte.

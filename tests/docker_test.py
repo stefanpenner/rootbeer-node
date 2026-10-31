@@ -26,6 +26,8 @@ REQUIRED_PACKAGES = {
     "libicu72",
     "liblzma5",
     "busybox-static",
+    # BusyBox sh runs its own applets before it looks at PATH. That hides the tool wrappers.
+    "dash",
 }
 
 
