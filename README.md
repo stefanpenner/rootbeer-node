@@ -65,7 +65,7 @@ Each checksum comes from the release `SHASUMS256.txt`.
 | 16 | 16.20.2 | `33188eb11b977113adb65b2e09d71bddd63f12168ba73ceadae6c27938dc9e93` | pass | pass |
 
 "Pass" means the source, hermetic, and network tests passed on a built binary.
-"Untested" means no binary exists for this pair. The patches apply and the source tests pass.
+"Untested" means that the hermetic and network tests have not run for this pair. The patches apply and the source tests pass.
 [STATUS.md](STATUS.md) has the evidence.
 Node 16 and 18 are past end of life.
 Node 26 has no Temporal API here, because the build declares no Rust toolchain. A stock Node 26 can have it.
