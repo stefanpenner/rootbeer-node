@@ -41,6 +41,17 @@ class SdkInputs(unittest.TestCase):
         settings = SDK_DIR / "SDKSettings.json"
         self.assertEqual(json.loads(settings.read_text())["Version"], INFO["version"])
 
+    @unittest.skipUnless(ON_MAC and "source" not in INFO, "only the default host SDK on macOS")
+    def test_the_default_info_json_is_the_host_sdk_and_holds_no_pin(self):
+        self.assertEqual(set(INFO), {"path", "sdk_dir", "version", "settings_sha256"})
+        self.assertTrue(os.path.isabs(INFO["path"]), INFO["path"])
+
+    @unittest.skipUnless(INFO.get("source") == "pinned", "only with --config=pinned-sdk")
+    def test_the_pinned_info_json_names_the_declared_files_and_no_address(self):
+        self.assertEqual(INFO["path"], "sdk")
+        self.assertRegex(INFO["tarball_sha256"], r"^[0-9a-f]{64}$")
+        self.assertNotIn("://", INFO_PATH.read_text())
+
 
 if __name__ == "__main__":
     unittest.main()
