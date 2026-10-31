@@ -251,6 +251,18 @@ def zlib_macos_test(text, name):
         r"#if defined\(MACOS\) \|\| defined\(TARGET_OS_MAC\)\n", "#if defined(MACOS)\n", text, name)
 
 
+# Node 16 and 18 seed V8 in node_mksnapshot, but they do not ask for a predictable schedule.
+# Without it, the startup snapshot differs from build to build. Node 20 and 22 ask for it themselves.
+SNAPSHOT_PATH = "tools/snapshot/node_mksnapshot.cc"
+
+
+def predictable_snapshot(text, name):
+    seed = '  v8::V8::SetFlagsFromString("--random_seed=42");\n'
+    return substitute(
+        re.escape(seed) + r'(?=  v8::V8::SetFlagsFromString\("--harmony-import-assertions"\);\n  return BuildSnapshot)',
+        seed + '  v8::V8::SetFlagsFromString("--predictable");\n', text, name)
+
+
 def edits_for(major):
     if major not in FAMILIES:
         raise SystemExit(
@@ -328,6 +340,9 @@ def main():
                 before = read(root, path)
                 zlib += unified(path, before, zlib_macos_test(before, f"{major}:{path}"))
             write(patches, major, "0004-zlib-macos-test.patch", zlib)
+            before = read(root, SNAPSHOT_PATH)
+            write(patches, major, "0005-predictable-snapshot.patch",
+                  unified(SNAPSHOT_PATH, before, predictable_snapshot(before, f"{major}:{SNAPSHOT_PATH}")))
 
 
 if __name__ == "__main__":
