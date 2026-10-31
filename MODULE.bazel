@@ -1,6 +1,7 @@
-module(name = "rootbeer-node", version = "0.1.0")
+module(name = "rootbeerz", version = "0.1.0")
 
 bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "rules_python", version = "2.4.6")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
@@ -72,7 +73,15 @@ use_repo(node, "node_versions")
 jdk = use_extension("//jdk:extension.bzl", "jdk")
 use_repo(jdk, "jdk_versions")
 
+# The stock certifi control. runtimes/certifi.json owns the version and the sha256.
+certifi_stock = use_repo_rule("//certifi:stock.bzl", "certifi_stock")
+
+certifi_stock(name = "certifi_stock")
+
 # The hermetic toolchain. docs/HERMETICITY.md gives the rung of each input.
+# These toolchains take priority over a toolchain that a dependency registers.
+register_toolchains("//bazel/cc:all")
+
 macos_sdk = use_repo_rule("//bazel:sdk.bzl", "macos_sdk")
 
 macos_sdk(name = "macos_sdk")

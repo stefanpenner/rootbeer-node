@@ -125,7 +125,7 @@ class TrustApi(unittest.TestCase):
 
 
 class BinaryScan(unittest.TestCase):
-    """The stock binary holds each bundled root as PEM text. rootbeer-node must hold none."""
+    """The stock binary holds each bundled root as PEM text. rootbeerz must hold none."""
 
     @classmethod
     def setUpClass(cls):

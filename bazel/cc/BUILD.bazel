@@ -1,0 +1,102 @@
+load("@rules_cc//cc:defs.bzl", "cc_toolchain")
+load(":cc_config.bzl", "cc_config")
+
+# One pinned LLVM runs on each execution platform and targets the same platform.
+# MODULE.bazel registers these toolchains, so Bazel never selects a host compiler.
+
+filegroup(
+    name = "linux_x64_files",
+    srcs = [
+        "@linux_sysroot//:files",
+        "@llvm_linux_x64//:toolchain",
+    ],
+)
+
+cc_config(
+    name = "linux_x64_config",
+    ar = "@llvm_linux_x64//:bin/llvm-ar",
+    clang = "@llvm_linux_x64//:bin/clang",
+    clangxx = "@llvm_linux_x64//:bin/clang++",
+    cpu = "k8",
+    libcxx = "@llvm_linux_x64//:lib/x86_64-unknown-linux-gnu/libc++.a",
+    libcxxabi = "@llvm_linux_x64//:lib/x86_64-unknown-linux-gnu/libc++abi.a",
+    os = "linux",
+    strip = "@llvm_linux_x64//:bin/llvm-strip",
+    sysroot_marker = "@linux_sysroot//:info.json",
+)
+
+cc_toolchain(
+    name = "linux_x64_cc",
+    all_files = ":linux_x64_files",
+    ar_files = ":linux_x64_files",
+    as_files = ":linux_x64_files",
+    compiler_files = ":linux_x64_files",
+    dwp_files = ":linux_x64_files",
+    linker_files = ":linux_x64_files",
+    objcopy_files = ":linux_x64_files",
+    strip_files = ":linux_x64_files",
+    toolchain_config = ":linux_x64_config",
+)
+
+toolchain(
+    name = "linux_x64_toolchain",
+    exec_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    toolchain = ":linux_x64_cc",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
+# The LLVM is pinned. The SDK is a host input until the opt-in pinned SDK. See docs/HERMETICITY.md.
+filegroup(
+    name = "darwin_arm64_files",
+    srcs = [
+        "@llvm_darwin_arm64//:toolchain",
+        "@macos_sdk//:cc_files",
+    ],
+)
+
+cc_config(
+    name = "darwin_arm64_config",
+    ar = "@llvm_darwin_arm64//:bin/llvm-ar",
+    clang = "@llvm_darwin_arm64//:bin/clang",
+    clangxx = "@llvm_darwin_arm64//:bin/clang++",
+    cpu = "darwin_arm64",
+    libcxx = "@llvm_darwin_arm64//:lib/libc++.a",
+    libcxxabi = "@llvm_darwin_arm64//:lib/libc++abi.a",
+    os = "darwin",
+    strip = "@llvm_darwin_arm64//:bin/llvm-strip",
+    sysroot_marker = "@macos_sdk//:sdk/SDKSettings.json",
+)
+
+cc_toolchain(
+    name = "darwin_arm64_cc",
+    all_files = ":darwin_arm64_files",
+    ar_files = ":darwin_arm64_files",
+    as_files = ":darwin_arm64_files",
+    compiler_files = ":darwin_arm64_files",
+    dwp_files = ":darwin_arm64_files",
+    linker_files = ":darwin_arm64_files",
+    objcopy_files = ":darwin_arm64_files",
+    strip_files = ":darwin_arm64_files",
+    toolchain_config = ":darwin_arm64_config",
+)
+
+toolchain(
+    name = "darwin_arm64_toolchain",
+    exec_compatible_with = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:macos",
+    ],
+    target_compatible_with = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:macos",
+    ],
+    toolchain = ":darwin_arm64_cc",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)

@@ -5,7 +5,6 @@ STATUS.md has the test results. HERMETICITY.md has the rungs.
 
 | Rank | Finding | Effect |
 |---|---|---|
-| 1 | `bazel test --config=remote-exec` fails in analysis. `@bazel_tools//third_party/ijar` finds no C++ toolchain. | Remote tests do not run. Remote builds do. |
 | 2 | The scheduler default stops an action at 1800 s. A rule cannot change this limit. | Node 26 fits by 180 s with 6 jobs, in one run. A busy host can pass the limit. |
 | 3 | Reproducibility is measured for macOS 22 (same bytes) and macOS 16 (different). | No claim for other pairs. |
 | 4 | CI has not run since #13. Hosted Actions are budget-blocked. | The Linux lockfile and later Linux changes are not checked by CI. |
