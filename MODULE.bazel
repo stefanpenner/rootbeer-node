@@ -1,4 +1,4 @@
-module(name = "rootbeer-node", version = "0.1.0")
+module(name = "rootbeerz", version = "0.1.0")
 
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_cc", version = "0.2.17")

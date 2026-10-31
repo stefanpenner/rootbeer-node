@@ -2,7 +2,7 @@
 
 Updated on 2026-10-31.
 
-Repository: https://github.com/stefanpenner/rootbeer-node
+Repository: https://github.com/stefanpenner/rootbeerz
 
 The project started as `stefanpenner/rootbeer`. The old address redirects.
 Bazel targets and artifact names keep the `rootbeer` prefix.
@@ -26,7 +26,7 @@ Bazel targets and artifact names keep the `rootbeer` prefix.
   - After these commits, the macOS 22 build passes `BuildPaths`. CI has not run on any of them, so Linux is not checked again.
 - The macOS 26 result is from commit `60cffa4` (2026-10-31), so it has the changes above and the SDK inputs of #18.
 - The macOS results come from this Mac, under Bazel.
-- CI run: https://github.com/stefanpenner/rootbeer-node/actions/runs/41165079670
+- CI run: https://github.com/stefanpenner/rootbeerz/actions/runs/41165079670
 - The CI commit `65c88ba` has the same tree as `8c71c7c`.
 
 ## Timings
