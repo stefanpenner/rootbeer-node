@@ -1,4 +1,11 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
+
+py_library(
+    name = "probelib",
+    srcs = ["probelib.py"],
+    imports = ["."],
+)
 
 COMMON_DATA = [
     "//certifi:rootbeerz_certifi",
@@ -18,11 +25,8 @@ COMMON_ENV = {
 
 py_test(
     name = "hermetic_test",
-    srcs = [
-        "hermetic_test.py",
-        "probelib.py",
-    ],
-    imports = ["."],
+    srcs = ["hermetic_test.py"],
+    deps = [":probelib"],
     data = COMMON_DATA + [
         "//runtimes:certifi.json",
         "//tests:fixtures/testonly-ca.pem",
@@ -40,12 +44,11 @@ py_test(
 
 py_test(
     name = "network_test",
-    srcs = [
-        "network_test.py",
-        "probelib.py",
+    srcs = ["network_test.py"],
+    deps = [
+        ":probelib",
+        "//tests:trustlib",
     ],
-    imports = ["."],
-    deps = ["//tests:trustlib"],
     data = COMMON_DATA,
     env = COMMON_ENV,
     size = "large",
