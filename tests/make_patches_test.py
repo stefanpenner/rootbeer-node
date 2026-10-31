@@ -126,6 +126,11 @@ class ConfigureFlags(unittest.TestCase):
     def test_older_releases_do_not_get_the_flag(self):
         self.assertNotIn("--v8-disable-temporal-support", self.flags(""))
 
+    def test_corepack_flag_needs_the_option(self):
+        # Node 26 has no corepack by default. configure gives an unknown flag to gyp, which fails.
+        self.assertNotIn("--without-corepack", self.flags("'--with-corepack'"))
+        self.assertIn("--without-corepack", self.flags("'--without-corepack'"))
+
 
 if __name__ == "__main__":
     unittest.main()

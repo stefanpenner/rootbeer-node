@@ -206,7 +206,10 @@ def copy_source(source_root, tree):
 def configure_flags(tree):
     with open(os.path.join(tree, "configure.py")) as stream:
         text = stream.read()
-    flags = ["--ninja", "--openssl-use-def-ca-store", "--without-npm", "--without-corepack"]
+    flags = ["--ninja", "--openssl-use-def-ca-store", "--without-npm"]
+    # configure gives an unknown flag to gyp, and gyp fails. Node 26 has no corepack by default.
+    if "--without-corepack" in text:
+        flags.append("--without-corepack")
     if "--without-dtrace" in text:
         flags.append("--without-dtrace")
     # Node 26 looks for cargo on PATH, and Temporal needs Rust. This build declares no Rust.
