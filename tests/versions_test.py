@@ -73,6 +73,11 @@ class Ci(unittest.TestCase):
             "build-pr: edit the node list in .github/workflows/ci.yml",
         )
 
+    def test_the_mutation_suites_run_with_the_source_tests(self):
+        # These suites prove that the trust tests can fail. They need no Node build.
+        self.assertIn("//tests:source_mutation_tests", WORKFLOW)
+        self.assertIn("//tests:stock_teeth_tests", WORKFLOW)
+
     def test_source_tests_run_as_one_suite(self):
         # A line with its own target name in the workflow is easy to forget.
         self.assertIn("//tests:source_tests", WORKFLOW)
