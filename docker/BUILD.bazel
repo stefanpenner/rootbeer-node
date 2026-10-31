@@ -1,0 +1,7 @@
+exports_files(
+    [
+        "Dockerfile",
+        "Dockerfile.dockerignore",
+    ],
+    visibility = ["//tests:__pkg__"],
+)

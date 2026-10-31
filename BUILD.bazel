@@ -1,7 +1,10 @@
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("//:versions.bzl", "NODE_VERSIONS")
 
-exports_files(["versions.bzl"])
+exports_files([
+    "README.md",
+    "versions.bzl",
+])
 
 [py_binary(
     name = "dist_%d" % major,

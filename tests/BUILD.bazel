@@ -21,3 +21,20 @@ py_test(
     env = {"WORKFLOW": "$(rootpath //.github/workflows:ci.yml)"},
     size = "small",
 )
+
+py_test(
+    name = "docker_test",
+    srcs = ["docker_test.py"],
+    data = [
+        "//:README.md",
+        "//docker:Dockerfile",
+        "//docker:Dockerfile.dockerignore",
+        "//docs:HERMETICITY.md",
+        "//trust:mozilla-no-emsign.pem",
+    ],
+    env = {
+        "BUILD_CONTEXT": ".",
+        "DOCKERFILE": "$(rootpath //docker:Dockerfile)",
+    },
+    size = "small",
+)
