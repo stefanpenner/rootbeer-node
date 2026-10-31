@@ -2,7 +2,7 @@
 
 Written on 2026-10-30. Source commit: `8c71c7c`.
 
-Repository: https://github.com/stefanpenner/systemca-nodejs
+Repository: https://github.com/stefanpenner/rootbeer-node
 
 The project started as `stefanpenner/rootbeer`. The old address redirects.
 Bazel targets and artifact names keep the `rootbeer` prefix.
@@ -22,7 +22,7 @@ The evidence for Linux differs per line. The next table gives the source of each
 "Pass" means that `source_N_test`, `hermetic_N_test`, and `network_N_test` passed.
 
 - The macOS results come from this Mac, under Bazel.
-- CI run: https://github.com/stefanpenner/systemca-nodejs/actions/runs/41165079670
+- CI run: https://github.com/stefanpenner/rootbeer-node/actions/runs/41165079670
 - The CI commit `65c88ba` has the same tree as `8c71c7c`.
 - The Node 22 CI jobs were still running when I wrote this file. The table does not use them.
 
