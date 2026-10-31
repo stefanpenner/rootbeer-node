@@ -1,0 +1,120 @@
+diff --git a/src/crypto/crypto_context.cc b/src/crypto/crypto_context.cc
+--- a/src/crypto/crypto_context.cc
++++ b/src/crypto/crypto_context.cc
+@@ -78,10 +78,6 @@
+ using v8::Value;
+ 
+ namespace crypto {
+-static const char* const root_certs[] = {
+-#include "node_root_certs.h"  // NOLINT(build/include_order)
+-};
+-
+ static std::string extra_root_certs_file;  // NOLINT(runtime/string)
+ 
+ static std::atomic<bool> has_cached_bundled_root_certs{false};
+@@ -786,24 +782,8 @@
+ }
+ 
+ static std::vector<X509*> InitializeBundledRootCertificates() {
+-  // Read the bundled certificates in node_root_certs.h into
+-  // bundled_root_certs_vector.
+-  std::vector<X509*> bundled_root_certs;
+-  size_t bundled_root_cert_count = arraysize(root_certs);
+-  bundled_root_certs.reserve(bundled_root_cert_count);
+-  for (size_t i = 0; i < bundled_root_cert_count; i++) {
+-    X509* x509 = PEM_read_bio_X509(
+-        NodeBIO::NewFixed(root_certs[i], strlen(root_certs[i])).get(),
+-        nullptr,  // no re-use of X509 structure
+-        NoPasswordCallback,
+-        nullptr);  // no callback data
+-
+-    // Parse errors from the built-in roots are fatal.
+-    CHECK_NOT_NULL(x509);
+-
+-    bundled_root_certs.push_back(x509);
+-  }
+-  return bundled_root_certs;
++  // rootbeer: The binary holds no roots.
++  return {};
+ }
+ 
+ // TODO(joyeecheung): it is a bit excessive to do this PEM -> X509
+@@ -979,16 +959,13 @@
+ #endif
+ 
+   Mutex::ScopedLock cli_lock(node::per_process::cli_options_mutex);
+-  if (per_process::cli_options->ssl_openssl_cert_store) {
+-    CHECK_EQ(1, X509_STORE_set_default_paths(store));
+-  } else {
+-    for (X509* cert : GetBundledRootCertificates()) {
++  // rootbeer: The binary holds no roots. The OpenSSL default paths are the only
++  // default trust source. They honor SSL_CERT_FILE and SSL_CERT_DIR. No flag
++  // changes this choice.
++  CHECK_EQ(1, X509_STORE_set_default_paths(store));
++  if (per_process::cli_options->use_system_ca) {
++    for (X509* cert : GetSystemStoreCACertificates()) {
+       CHECK_EQ(1, X509_STORE_add_cert(store, cert));
+-    }
+-    if (per_process::cli_options->use_system_ca) {
+-      for (X509* cert : GetSystemStoreCACertificates()) {
+-        CHECK_EQ(1, X509_STORE_add_cert(store, cert));
+-      }
+     }
+   }
+ 
+@@ -1029,19 +1006,7 @@
+ 
+ void GetBundledRootCertificates(const FunctionCallbackInfo<Value>& args) {
+   Environment* env = Environment::GetCurrent(args);
+-  Local<Value> result[arraysize(root_certs)];
+-
+-  for (size_t i = 0; i < arraysize(root_certs); i++) {
+-    if (!String::NewFromOneByte(
+-            env->isolate(),
+-            reinterpret_cast<const uint8_t*>(root_certs[i]))
+-            .ToLocal(&result[i])) {
+-      return;
+-    }
+-  }
+-
+-  args.GetReturnValue().Set(
+-      Array::New(env->isolate(), result, arraysize(root_certs)));
++  args.GetReturnValue().Set(Array::New(env->isolate()));
+ }
+ 
+ bool ArrayOfStringsToX509s(Local<Context> context,
+diff --git a/src/node_options.cc b/src/node_options.cc
+--- a/src/node_options.cc
++++ b/src/node_options.cc
+@@ -77,11 +77,6 @@
+ void PerProcessOptions::CheckOptions(std::vector<std::string>* errors,
+                                      std::vector<std::string>* argv) {
+ #if HAVE_OPENSSL
+-  if (use_openssl_ca && use_bundled_ca) {
+-    errors->push_back("either --use-openssl-ca or --use-bundled-ca can be "
+-                      "used, not both");
+-  }
+-
+   // Any value less than 2 disables use of the secure heap.
+   if (secure_heap >= 2) {
+     if ((secure_heap & (secure_heap - 1)) != 0)
+@@ -1243,7 +1238,6 @@
+             "",
+             &PerProcessOptions::ssl_openssl_cert_store);
+   Implies("--use-openssl-ca", "[ssl_openssl_cert_store]");
+-  ImpliesNot("--use-bundled-ca", "[ssl_openssl_cert_store]");
+   AddOption("--enable-fips",
+             "enable FIPS crypto at startup",
+             &PerProcessOptions::enable_fips_crypto,
+diff --git a/deps/openssl/openssl_common.gypi b/deps/openssl/openssl_common.gypi
+--- a/deps/openssl/openssl_common.gypi
++++ b/deps/openssl/openssl_common.gypi
+@@ -50,7 +50,7 @@
+         'WARNING_CFLAGS': ['-Wno-missing-field-initializers']
+       },
+       'defines': [
+-        'OPENSSLDIR="/System/Library/OpenSSL/"',
++        'OPENSSLDIR="/etc/ssl"',
+         'ENGINESDIR="/dev/null"',
+       ],
+     }, 'OS=="solaris"', {

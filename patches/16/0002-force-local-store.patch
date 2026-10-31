@@ -1,0 +1,128 @@
+diff --git a/src/crypto/crypto_context.cc b/src/crypto/crypto_context.cc
+--- a/src/crypto/crypto_context.cc
++++ b/src/crypto/crypto_context.cc
+@@ -41,10 +41,6 @@
+ using v8::Value;
+ 
+ namespace crypto {
+-static const char* const root_certs[] = {
+-#include "node_root_certs.h"  // NOLINT(build/include_order)
+-};
+-
+ static const char system_cert_path[] = NODE_OPENSSL_SYSTEM_CERT_PATH;
+ 
+ static X509_STORE* root_cert_store;
+@@ -191,27 +187,6 @@
+ }  // namespace
+ 
+ X509_STORE* NewRootCertStore() {
+-  static std::vector<X509*> root_certs_vector;
+-  static Mutex root_certs_vector_mutex;
+-  Mutex::ScopedLock lock(root_certs_vector_mutex);
+-
+-  if (root_certs_vector.empty() &&
+-      per_process::cli_options->ssl_openssl_cert_store == false) {
+-    for (size_t i = 0; i < arraysize(root_certs); i++) {
+-      X509* x509 =
+-          PEM_read_bio_X509(NodeBIO::NewFixed(root_certs[i],
+-                                              strlen(root_certs[i])).get(),
+-                            nullptr,   // no re-use of X509 structure
+-                            NoPasswordCallback,
+-                            nullptr);  // no callback data
+-
+-      // Parse errors from the built-in roots are fatal.
+-      CHECK_NOT_NULL(x509);
+-
+-      root_certs_vector.push_back(x509);
+-    }
+-  }
+-
+   X509_STORE* store = X509_STORE_new();
+   if (*system_cert_path != '\0') {
+     ERR_set_mark();
+@@ -220,33 +195,17 @@
+   }
+ 
+   Mutex::ScopedLock cli_lock(node::per_process::cli_options_mutex);
+-  if (per_process::cli_options->ssl_openssl_cert_store) {
+-    X509_STORE_set_default_paths(store);
+-  } else {
+-    for (X509* cert : root_certs_vector) {
+-      X509_up_ref(cert);
+-      X509_STORE_add_cert(store, cert);
+-    }
+-  }
++  // rootbeer: The binary holds no roots. The OpenSSL default paths are the only
++  // default trust source. They honor SSL_CERT_FILE and SSL_CERT_DIR. No flag
++  // changes this choice.
++  X509_STORE_set_default_paths(store);
+ 
+   return store;
+ }
+ 
+ void GetRootCertificates(const FunctionCallbackInfo<Value>& args) {
+   Environment* env = Environment::GetCurrent(args);
+-  Local<Value> result[arraysize(root_certs)];
+-
+-  for (size_t i = 0; i < arraysize(root_certs); i++) {
+-    if (!String::NewFromOneByte(
+-            env->isolate(),
+-            reinterpret_cast<const uint8_t*>(root_certs[i]))
+-            .ToLocal(&result[i])) {
+-      return;
+-    }
+-  }
+-
+-  args.GetReturnValue().Set(
+-      Array::New(env->isolate(), result, arraysize(root_certs)));
++  args.GetReturnValue().Set(Array::New(env->isolate()));
+ }
+ 
+ bool SecureContext::HasInstance(Environment* env, const Local<Value>& value) {
+diff --git a/src/node_options.cc b/src/node_options.cc
+--- a/src/node_options.cc
++++ b/src/node_options.cc
+@@ -66,11 +66,6 @@
+ 
+ void PerProcessOptions::CheckOptions(std::vector<std::string>* errors) {
+ #if HAVE_OPENSSL
+-  if (use_openssl_ca && use_bundled_ca) {
+-    errors->push_back("either --use-openssl-ca or --use-bundled-ca can be "
+-                      "used, not both");
+-  }
+-
+   // Any value less than 2 disables use of the secure heap.
+   if (secure_heap >= 2) {
+     if ((secure_heap & (secure_heap - 1)) != 0)
+@@ -868,7 +863,6 @@
+             "",
+             &PerProcessOptions::ssl_openssl_cert_store);
+   Implies("--use-openssl-ca", "[ssl_openssl_cert_store]");
+-  ImpliesNot("--use-bundled-ca", "[ssl_openssl_cert_store]");
+   AddOption("--enable-fips",
+             "enable FIPS crypto at startup",
+             &PerProcessOptions::enable_fips_crypto,
+diff --git a/deps/openssl/openssl_common.gypi b/deps/openssl/openssl_common.gypi
+--- a/deps/openssl/openssl_common.gypi
++++ b/deps/openssl/openssl_common.gypi
+@@ -47,7 +47,7 @@
+         'WARNING_CFLAGS': ['-Wno-missing-field-initializers']
+       },
+       'defines': [
+-        'OPENSSLDIR="/System/Library/OpenSSL/"',
++        'OPENSSLDIR="/etc/ssl"',
+         'ENGINESDIR="/dev/null"',
+       ],
+     }, 'OS=="solaris"', {
+diff --git a/deps/openssl/openssl.gypi b/deps/openssl/openssl.gypi
+--- a/deps/openssl/openssl.gypi
++++ b/deps/openssl/openssl.gypi
+@@ -1292,7 +1292,7 @@
+       # Set to ubuntu default path for convenience. If necessary,
+       # override this at runtime with the SSL_CERT_DIR environment
+       # variable.
+-      'OPENSSLDIR="/System/Library/OpenSSL/"',
++      'OPENSSLDIR="/etc/ssl"',
+     ],
+     'openssl_default_defines_linux_others': [
+       # Set to ubuntu default path for convenience. If necessary,

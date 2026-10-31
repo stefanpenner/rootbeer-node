@@ -94,6 +94,11 @@ NODE_SOURCES = {
         strip_prefix = "node-v" + version,
         urls = ["https://nodejs.org/dist/v{0}/node-v{0}.tar.gz".format(version)],
         # V8 and others ship BUILD files. These files would split the source tree into packages.
+        patch_args = ["-p1"],
+        patches = [
+            "//patches:{}/0001-empty-root-certs.patch".format(major),
+            "//patches:{}/0002-force-local-store.patch".format(major),
+        ],
         patch_cmds = ["find deps tools -type f \\( -name BUILD -o -name BUILD.bazel \\) -delete"],
     )
     for major, (version, sha256) in NODE_SOURCES.items()
