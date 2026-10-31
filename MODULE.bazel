@@ -102,7 +102,8 @@ NODE_SOURCES = {
             "//patches:{}/0003-libcxx-19-char-traits.patch".format(major),
             "//patches:{}/0004-zlib-macos-test.patch".format(major),
         ] if major in ("16", "18") else []),
-        patch_cmds = ["find deps tools -type f \\( -name BUILD -o -name BUILD.bazel \\) -delete"],
+        # Use -exec, not -delete. BusyBox find has no -delete.
+        patch_cmds = ["find deps tools -type f \\( -name BUILD -o -name BUILD.bazel \\) -exec rm -f {} +"],
     )
     for major, (version, sha256) in NODE_SOURCES.items()
 ]

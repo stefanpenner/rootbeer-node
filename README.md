@@ -25,7 +25,7 @@ Node 16 and 18 are past end of life. They get no upstream security fixes.
 ## Platforms
 
 - **macOS arm64 (macOS 14 or later):** All four lines build and pass the tests.
-- **Linux x86_64:** The build is not verified yet.
+- **Linux x86_64:** Node 16 builds in the Docker image and passes the source, hermetic, and network tests. The other lines are not verified yet.
 
 ## Build
 
@@ -37,12 +37,13 @@ bazel build //node:rootbeer_22 //node:dist_22 --output_groups=+dist
 
 Change `22` to build a different line.
 
-On Linux or in a container, use the Docker image:
+On Linux or in a container, use the Docker image.
+The image holds only pinned files. Build it from the repository root:
 
 ```sh
-docker build --platform linux/amd64 -t rootbeer-linux docker
+docker build --platform linux/amd64 -f docker/Dockerfile -t systemca-nodejs-linux .
 docker run --rm --platform linux/amd64 \
-  -v "$PWD":/src:ro -v rootbeer-bazel-cache:/cache rootbeer-linux \
+  -v "$PWD":/src:ro -v systemca-bazel-cache:/cache systemca-nodejs-linux \
   bazel --output_user_root=/cache build --lockfile_mode=off --symlink_prefix=/ --jobs=1 \
   //node:rootbeer_22 //node:dist_22 --output_groups=+dist
 ```
@@ -77,7 +78,6 @@ The project was called `rootbeer`. Some names keep the old prefix:
 
 - Bazel targets, for example `//node:rootbeer_22`
 - `ROOTBEER_*` environment variables
-- The `rootbeer-linux` image
 - The artifact file names
 
 ## More information

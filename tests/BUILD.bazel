@@ -21,3 +21,39 @@ py_test(
     env = {"WORKFLOW": "$(rootpath //.github/workflows:ci.yml)"},
     size = "small",
 )
+
+py_test(
+    name = "docker_test",
+    srcs = ["docker_test.py"],
+    data = [
+        "//:README.md",
+        "//docker:Dockerfile",
+        "//docker:Dockerfile.dockerignore",
+        "//docker:context",
+        "//docs:HERMETICITY.md",
+        "//trust:mozilla-no-emsign.pem",
+    ],
+    env = {
+        "BUILD_CONTEXT": ".",
+        "DOCKERFILE": "$(rootpath //docker:Dockerfile)",
+    },
+    size = "small",
+)
+
+# Needs Docker and a built image. See the docstring of image_test.py.
+py_test(
+    name = "image_test",
+    srcs = ["image_test.py"],
+    data = ["//trust:mozilla-no-emsign.pem"],
+    env = {"TRUST_BUNDLE": "$(rootpath //trust:mozilla-no-emsign.pem)"},
+    size = "medium",
+    tags = [
+        "external",
+        "local",
+        "manual",
+        "no-cache",
+        "no-remote",
+        "no-sandbox",
+        "requires-docker",
+    ],
+)
