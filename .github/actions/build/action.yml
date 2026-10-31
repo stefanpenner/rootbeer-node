@@ -1,0 +1,41 @@
+name: build
+description: Build one Node line with a pinned Bazel, run its tests, and upload the archive.
+
+inputs:
+  node:
+    description: Node major version, for example 22.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-bazel
+
+    - name: Build Node ${{ inputs.node }}
+      shell: bash
+      run: |
+        # .bazelrc asks for 10 CPUs. Use what the machine has.
+        bazel build --lockfile_mode=off --jobs=HOST_CPUS --local_resources=cpu=HOST_CPUS \
+          --local_resources=memory=HOST_RAM*.8 \
+          //node:rootbeer_${{ inputs.node }} //node:dist_${{ inputs.node }} --output_groups=+dist
+
+    - name: Test Node ${{ inputs.node }}
+      shell: bash
+      run: |
+        bazel test --lockfile_mode=off --jobs=HOST_CPUS --local_resources=cpu=HOST_CPUS \
+          --local_resources=memory=HOST_RAM*.8 \
+          //tests:source_${{ inputs.node }}_test \
+          //tests:hermetic_${{ inputs.node }}_test \
+          //tests:network_${{ inputs.node }}_test
+
+    - name: Collect the archive
+      shell: bash
+      run: |
+        mkdir -p out
+        cp -L bazel-bin/node/node-v*-rootbeer-*.tar.gz* out/
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: node-${{ inputs.node }}-${{ runner.os }}-${{ runner.arch }}
+        path: out/*
+        if-no-files-found: error

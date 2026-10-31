@@ -93,6 +93,10 @@ The project was called `rootbeer`. Some names keep the old prefix:
   It waits until the owner approves the run in the `pr-approval` environment.
 - Runs from outside contributors always need approval.
 - A pull request never uses a self-hosted runner. `tests/ci_test.py` checks this rule.
+- Each run builds Node 16, 18, 20, and 22 on macOS 14 and on Linux.
+  Each build runs the source, hermetic, and network tests, then uploads the archive as an artifact.
+- Bazel comes from a pinned release. The job checks the sha256 before it runs the binary.
+  Each action in a workflow has a commit SHA.
 
 ## License
 
