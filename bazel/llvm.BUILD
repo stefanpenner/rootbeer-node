@@ -58,3 +58,10 @@ filegroup(
         ],
     ),
 )
+
+# Bindgen loads libclang at build time. This group stays apart from the toolchain group, because a
+# change to the toolchain group changes the inputs of each Node build.
+filegroup(
+    name = "libclang",
+    srcs = glob(["lib/libclang.dylib"], allow_empty = True),
+)

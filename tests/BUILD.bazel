@@ -11,6 +11,12 @@ py_library(
         "trustlib.py",
     ],
     imports = ["."],
+    visibility = ["//tests/deno:__pkg__"],
+)
+
+exports_files(
+    glob(["fixtures/*"]),
+    visibility = ["//tests/deno:__pkg__"],
 )
 
 [rootbeer_tests(major, version) for major, version in NODE_VERSIONS.items()]
