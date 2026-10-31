@@ -48,4 +48,4 @@ Pass `--old-v8` when the V8 of the line needs the Clang warning flags and the li
 `tests/versions_test.py` fails when the CI matrix, the README table, the patch files, or
 `make_patches.py` disagree with the tags. `tests/add_node_version_test.py` tests the tool.
 
-After a build, record the result in `STATUS.md` and the artifact hashes in the README.
+After a build, record the result in `STATUS.md` and the artifact hashes.
