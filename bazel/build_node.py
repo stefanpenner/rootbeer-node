@@ -68,6 +68,27 @@ echo "Build version 16A242"
 """
 
 
+# abseil.gyp in Node 24 and 26 gives -framework to libtool. llvm-libtool-darwin stops on that
+# flag. A static archive holds no framework link, and the final link gets its own flags.
+LIBTOOL_WRAPPER = """#!/bin/sh
+count=$#
+while [ "$count" -gt 0 ]; do
+  arg=$1
+  shift
+  count=$((count - 1))
+  case "$arg" in
+    -framework)
+      shift
+      count=$((count - 1))
+      ;;
+    "-framework "*) ;;
+    *) set -- "$@" "$arg" ;;
+  esac
+done
+exec "{libtool}" "$@"
+"""
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-marker", required=True)
@@ -162,7 +183,7 @@ def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, ol
     exec_tool(bin_dir, "python", python)
     exec_tool(bin_dir, "python3", python)
     if args.os == "darwin":
-        exec_tool(bin_dir, "libtool", os.path.join(llvm_bin, "llvm-libtool-darwin"))
+        write_tool(bin_dir, "libtool", LIBTOOL_WRAPPER.format(libtool=os.path.join(llvm_bin, "llvm-libtool-darwin")))
         write_tool(bin_dir, "xcrun", XCRUN_WRAPPER.format(sdk=sysroot, version=sysroot_version))
         write_tool(bin_dir, "xcodebuild", XCODEBUILD_WRAPPER)
     return bin_dir
@@ -206,9 +227,16 @@ def copy_source(source_root, tree):
 def configure_flags(tree):
     with open(os.path.join(tree, "configure.py")) as stream:
         text = stream.read()
-    flags = ["--ninja", "--openssl-use-def-ca-store", "--without-npm", "--without-corepack"]
+    flags = ["--ninja", "--openssl-use-def-ca-store", "--without-npm"]
+    # configure gives an unknown flag to gyp, and gyp fails. Node 26 has no corepack by default.
+    if "--without-corepack" in text:
+        flags.append("--without-corepack")
     if "--without-dtrace" in text:
         flags.append("--without-dtrace")
+    # Node 26 looks for cargo on PATH, and Temporal needs Rust. This build declares no Rust.
+    # The flag makes the choice explicit, so a host cargo cannot change it.
+    if "--v8-disable-temporal-support" in text:
+        flags.append("--v8-disable-temporal-support")
     return flags
 
 

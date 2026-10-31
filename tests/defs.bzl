@@ -41,6 +41,8 @@ def rootbeer_tests(major, version):
             source + "node_mksnapshot_cc_%d" % major,
             source + "node_options_cc_%d" % major,
             source + "openssl_common_gypi_%d" % major,
+            source + "configure_%d" % major,
+            "//bazel:build_node.py",
         ],
         env = {
             "ROOT_CERTS_H": "$(rootpath %snode_root_certs_h_%d)" % (source, major),
@@ -48,6 +50,8 @@ def rootbeer_tests(major, version):
             "NODE_MKSNAPSHOT_CC": "$(rootpath %snode_mksnapshot_cc_%d)" % (source, major),
             "NODE_OPTIONS_CC": "$(rootpath %snode_options_cc_%d)" % (source, major),
             "OPENSSL_COMMON_GYPI": "$(rootpath %sopenssl_common_gypi_%d)" % (source, major),
+            "CONFIGURE_PY": "$(rootpath %sconfigure_%d)" % (source, major),
+            "BUILD_NODE": "$(rootpath //bazel:build_node.py)",
         },
         size = "small",
     )

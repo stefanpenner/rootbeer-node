@@ -16,6 +16,7 @@ from pathlib import Path
 VERSIONS = json.loads(Path(os.environ["VERSIONS_JSON"]).read_text())
 MODULE = Path(os.environ["MODULE_BAZEL"])
 README = Path(os.environ["README"]).read_text()
+STATUS = Path(os.environ["STATUS"]).read_text()
 WORKFLOW = Path(os.environ["WORKFLOW"]).read_text()
 MAKE_PATCHES = Path(os.environ["MAKE_PATCHES"])
 PATCHES = [Path(p) for p in os.environ["PATCHES"].split()]
@@ -51,17 +52,26 @@ class Hub(unittest.TestCase):
 
 
 class Ci(unittest.TestCase):
+    @staticmethod
+    def matrix_lines(text):
+        match = re.search(r"^        node: \[(.*)\]$", text, re.MULTILINE)
+        return [item.strip() for item in match.group(1).split(",")] if match else None
+
     def test_matrix_covers_every_node_line(self):
-        jobs = build_jobs()
-        self.assertTrue(jobs)
-        for name, text in jobs.items():
-            match = re.search(r"^        node: \[(.*)\]$", text, re.MULTILINE)
-            self.assertIsNotNone(match, name)
-            self.assertEqual(
-                [item.strip() for item in match.group(1).split(",")],
-                sorted(MAJORS, key=int),
-                f"{name}: edit the node list in .github/workflows/ci.yml",
-            )
+        self.assertEqual(
+            self.matrix_lines(build_jobs()["build"]),
+            sorted(MAJORS, key=int),
+            "build: edit the node list in .github/workflows/ci.yml",
+        )
+
+    def test_pull_requests_build_the_oldest_and_newest_line_only(self):
+        # A full matrix costs 12 long jobs. The build job on main still builds every line.
+        ordered = sorted(MAJORS, key=int)
+        self.assertEqual(
+            self.matrix_lines(build_jobs()["build-pr"]),
+            [ordered[0], ordered[-1]],
+            "build-pr: edit the node list in .github/workflows/ci.yml",
+        )
 
     def test_source_tests_run_as_one_suite(self):
         # A line with its own target name in the workflow is easy to forget.
@@ -79,6 +89,21 @@ class Readme(unittest.TestCase):
         text = prose(MAJORS)
         self.assertIn(f"Node.js {text} with no bundled root certificates", README)
         self.assertIn(f"builds Node {text} on macOS 14", README)
+
+
+class Status(unittest.TestCase):
+    """STATUS.md holds the evidence for each result that the README states."""
+
+    result = STATUS.split("## Result\n")[1].split("\n## ")[0]
+
+    def test_table_lists_every_version(self):
+        rows = re.findall(r"^\| (\d+\.\d+\.\d+) \|", self.result, re.MULTILINE)
+        self.assertEqual(rows, [l["version"] for l in VERSIONS], "edit the Result table in STATUS.md")
+
+    def test_readme_gives_the_same_result(self):
+        readme = re.findall(r"^\| \d+ \| ([0-9.]+) \| `[0-9a-f]{64}` \| ([^|]+) \| ([^|]+) \|", README, re.MULTILINE)
+        status = re.findall(r"^\| (\d+\.\d+\.\d+) \| ([^|]+) \| ([^|]+) \|", self.result, re.MULTILINE)
+        self.assertEqual(readme, status, "README.md and STATUS.md disagree")
 
 
 class Patches(unittest.TestCase):

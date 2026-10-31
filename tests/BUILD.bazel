@@ -122,6 +122,7 @@ py_test(
     data = [
         "//:MODULE.bazel",
         "//:README.md",
+        "//:STATUS.md",
         "//.github/workflows:ci.yml",
         "//patches:all",
         "//tools:make_patches.py",
@@ -131,9 +132,24 @@ py_test(
         "VERSIONS_JSON": "$(rootpath @node_versions//:versions.json)",
         "MODULE_BAZEL": "$(rootpath //:MODULE.bazel)",
         "README": "$(rootpath //:README.md)",
+        "STATUS": "$(rootpath //:STATUS.md)",
         "WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
         "MAKE_PATCHES": "$(rootpath //tools:make_patches.py)",
         "PATCHES": "$(rootpaths //patches:all)",
+    },
+    size = "small",
+)
+
+py_test(
+    name = "make_patches_test",
+    srcs = ["make_patches_test.py"],
+    data = [
+        "//bazel:build_node.py",
+        "//tools:make_patches.py",
+    ],
+    env = {
+        "BUILD_NODE": "$(rootpath //bazel:build_node.py)",
+        "MAKE_PATCHES": "$(rootpath //tools:make_patches.py)",
     },
     size = "small",
 )

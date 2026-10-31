@@ -1,5 +1,9 @@
 """Tests the patched source. These tests prove the patch without a compile."""
 
+import importlib.util
+import os
+import shutil
+import tempfile
 import unittest
 
 from trustlib import path_from_env
@@ -68,6 +72,20 @@ class Options(SourceCase):
 
     def test_bundled_flag_has_no_effect_on_the_store(self):
         self.assertAbsent('ImpliesNot("--use-bundled-ca"', self.text)
+
+
+class ConfigureFlags(SourceCase):
+    """configure gives an unknown flag to gyp, and only a real build then shows the failure."""
+
+    def test_this_release_accepts_every_flag(self):
+        spec = importlib.util.spec_from_file_location("build_node", path_from_env("BUILD_NODE"))
+        driver = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(driver)
+        text = read("CONFIGURE_PY")
+        with tempfile.TemporaryDirectory() as tree:
+            shutil.copyfile(path_from_env("CONFIGURE_PY"), os.path.join(tree, "configure.py"))
+            flags = driver.configure_flags(tree)
+        self.assertEqual([flag for flag in flags if f"'{flag}'" not in text], [])
 
 
 class OpenSslDirectory(SourceCase):

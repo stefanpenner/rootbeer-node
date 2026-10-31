@@ -1,6 +1,6 @@
 # Status
 
-Written on 2026-10-30. Source commit: `8c71c7c`.
+Updated on 2026-10-31.
 
 Repository: https://github.com/stefanpenner/rootbeer-node
 
@@ -9,22 +9,24 @@ Bazel targets and artifact names keep the `rootbeer` prefix.
 
 ## Result
 
-All four Node lines build and pass the tests on macOS arm64 and on Linux x86_64.
-The evidence for Linux differs per line. The next table gives the source of each result.
+"Pass" means that `source_N_test`, `hermetic_N_test`, and `network_N_test` passed on a built binary.
+"Untested" means that no binary exists for this pair. The patches apply and the source tests pass. Nothing else is known.
 
 | Node | macOS arm64 | Linux x86_64 | Linux evidence |
 |---|---|---|---|
+| 26.13.0 | untested | untested | None. CI has not run this line. |
+| 24.22.2 | untested | untested | None. CI has not run this line. |
 | 22.23.4 | pass | pass | Docker on the Mac, emulated, earlier image |
 | 20.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner |
 | 18.20.8 | pass | pass | CI, GitHub-hosted Ubuntu runner |
 | 16.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner, and a remote host in the current image |
 
-"Pass" means that `source_N_test`, `hermetic_N_test`, and `network_N_test` passed.
-
+- The results for 16, 18, 20, and 22 are from commit `8c71c7c` (2026-10-30). Later commits changed the build.
+  - #13 made the action environment strict, and #15 and #16 removed build paths from the binary.
+  - After these commits, the macOS 22 build passes `BuildPaths`. CI has not run on any of them, so Linux is not checked again.
 - The macOS results come from this Mac, under Bazel.
 - CI run: https://github.com/stefanpenner/rootbeer-node/actions/runs/41165079670
 - The CI commit `65c88ba` has the same tree as `8c71c7c`.
-- The Node 22 CI jobs were still running when I wrote this file. The table does not use them.
 
 ## Timings
 
@@ -38,7 +40,7 @@ Cold build, one action for each line:
 | 16.20.2 | 784 s | 2565 s (CI), about 15 min (remote host, 4 CPUs, 8 GB) |
 
 The macOS 18 and 16 times overlapped a Linux build, so they are not clean measurements.
-A cache hit took 4 to 5 s for all four macOS dist targets together.
+A cache hit took 4 to 5 s for the four macOS dist targets of 16, 18, 20, and 22 together.
 
 Test times on macOS arm64:
 
@@ -51,8 +53,9 @@ Test times on macOS arm64:
 
 ## Artifacts
 
+These checksums are for archives from commit `8c71c7c`. Commits #15 and #16 change the bytes, so a new build gives a different checksum.
 The archives are in `./dist/` on the Mac. This directory is not in git.
-These are the archive checksums. No test proves that a new build gives the same bytes.
+`tools/repro_check.py` compares two builds. `docs/HERMETICITY.md` has its results.
 
 | File | sha256 |
 |---|---|
@@ -123,7 +126,7 @@ The build is not fully hermetic. `docs/HERMETICITY.md` gives the rung of each in
 - The macOS SDK comes from the host. The Apple license does not allow a pinned copy.
 - The macOS POSIX tools come from the host. The result does not record their versions.
 - The Bazel sandboxes do not hide host read paths.
-- No test compares two builds, so byte-for-byte reproducibility is not proven.
+- No test compares two builds. `tools/repro_check.py` does it by hand. Node 22 on macOS gave the same bytes, and Node 16 did not.
 - `-Wl,-no_fixup_chains` is required on macOS. The cause is in `docs/HERMETICITY.md`: dyld 27 leaves the chained weak-def-coalesce binds of a static libc++ null. A two-line iostream program shows it, and Apple's `ld` shows it too.
 
 ### eMudhra hosts
@@ -134,6 +137,11 @@ The build is not fully hermetic. `docs/HERMETICITY.md` gives the rung of each in
   The tests use `trust/mozilla-no-emsign.pem` for this reason.
 - OpenSSL does not check revocation, so a revoked host does not fail because of its revocation.
 - eMudhra is leaving the TLS business. When the hosts stop, the tests report an error and not a pass.
+
+### Behavior of the new lines
+
+- Node 26 has no Temporal. The driver passes `--v8-disable-temporal-support`, because Temporal needs a Rust toolchain that the build does not declare. A stock Node 26 can have Temporal.
+- Node 26 has no corepack. Stock Node 26 also leaves it out by default. Node 24 has no corepack here, because the driver passes `--without-corepack`.
 
 ### Support
 
