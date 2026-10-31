@@ -19,3 +19,17 @@ platform(
         "container-image": "docker://ghcr.io/catthehacker/ubuntu:act-22.04@sha256:dd7654ffb01d5b7b54b23b9ce928a1f7f2d08c7b3d7e320b6574b55d7ccde78b",
     },
 )
+
+# A proposal. It needs a worker with the same properties. docs/REMOTE_BIG_WORKER.md has the plan.
+platform(
+    name = "linux_x64_big",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    exec_properties = {
+        "OSFamily": "linux",
+        "container-image": "docker://ghcr.io/catthehacker/ubuntu:act-22.04@sha256:dd7654ffb01d5b7b54b23b9ce928a1f7f2d08c7b3d7e320b6574b55d7ccde78b",
+        "pool": "big",
+    },
+)

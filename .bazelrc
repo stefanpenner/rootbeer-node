@@ -33,4 +33,11 @@ build:remote-exec --noremote_local_fallback
 build:remote-exec --remote_timeout=3h
 build:remote-exec --remote_download_toplevel
 
+# A proposal. The big pool does not exist yet. See docs/REMOTE_BIG_WORKER.md.
+# These flags follow --config=remote-exec, so they replace its platforms.
+build:remote-exec-big --config=remote-exec
+build:remote-exec-big --platforms=//platforms:linux_x64_big
+build:remote-exec-big --host_platform=//platforms:linux_x64_big
+build:remote-exec-big --extra_execution_platforms=//platforms:linux_x64_big
+
 try-import %workspace%/user.bazelrc
