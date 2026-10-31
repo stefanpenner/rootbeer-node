@@ -1,4 +1,3 @@
 /bazel-*
 /dist/
 /user.bazelrc
-MODULE.bazel.lock

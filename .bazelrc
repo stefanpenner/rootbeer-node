@@ -1,4 +1,12 @@
 common --enable_bzlmod
+
+# MODULE.bazel.lock is committed. It pins the hash of every registry file.
+# A stale lockfile is an error. Run `bazel mod deps --lockfile_mode=update` to change it.
+common --lockfile_mode=error
+
+# Actions get a fixed environment, and no network. A test that needs the network has the tag requires-network.
+build --incompatible_strict_action_env
+build --sandbox_default_allow_network=false
 build --jobs=10
 test --test_output=errors
 test --test_verbose_timeout_warnings
