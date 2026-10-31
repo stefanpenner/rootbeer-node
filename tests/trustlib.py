@@ -1,4 +1,4 @@
-"""Shared helpers for the rootbeer tests. The tests read their inputs from env."""
+"""Shared helpers for the systemca-nodejs tests. The tests read their inputs from env."""
 
 import json
 import os

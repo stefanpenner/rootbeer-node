@@ -39,7 +39,7 @@ These names returned NXDOMAIN: `testdvg3`, `testevs`, `testovs`, `testdvs`, `tes
 Each probe has one of these outcomes.
 
 - **trusted**: The handshake and the certificate check succeeded.
-- **store rejected**: The handshake reached certificate verification, and verification failed. This outcome is the pass for rootbeer.
+- **store rejected**: The handshake reached certificate verification, and verification failed. This outcome is the pass for systemca-nodejs.
 - **store independent**: The certificate fails for a reason that no store changes. An example is an expired certificate.
 - **Inconclusive**: DNS or the network failed. The test reports an error. An Inconclusive result is never a pass.
 
@@ -56,8 +56,8 @@ Stock Node 22 also blocks the demonstration hosts by public key (`kBlockedSPKIs`
 
 ## The gap that remains
 
-Rootbeer fails against these hosts when the local store has no emSign root.
-Rootbeer connects to the G1 hosts when the local store has emSign G1.
+systemca-nodejs fails against these hosts when the local store has no emSign root.
+systemca-nodejs connects to the G1 hosts when the local store has emSign G1.
 On 2026-10-30, the curl Mozilla bundle and macOS `/etc/ssl/cert.pem` both contained emSign roots.
 `trust/mozilla-no-emsign.pem` removes the emSign root for this reason.
 OpenSSL does not check revocation, so the revoked hosts do not fail for their revocation.

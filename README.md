@@ -1,4 +1,4 @@
-# rootbeer
+# systemca-nodejs
 
 Node.js LTS builds with no bundled root certificates. Trust comes from the local store.
 
@@ -14,7 +14,7 @@ The eMudhra emSign roots show this problem. See [docs/EMUDHRA.md](docs/EMUDHRA.m
 ## Threat model
 
 - The binary holds no roots. An attacker cannot use a stale root from the binary.
-- The host decides trust. A compromised or stale host store gives the same trust to rootbeer.
+- The host decides trust. A compromised or stale host store gives the same trust to systemca-nodejs.
 - OpenSSL does not check revocation here. A revoked certificate from a trusted root still connects.
 - The patches change the default trust source only. Code can still pass its own `ca` option.
 - `NODE_EXTRA_CA_CERTS` still adds certificates. Anyone who controls the environment controls trust.
@@ -44,6 +44,8 @@ Node 16 and Node 18 are past their end of life. They get no upstream security fi
 | `trust/` | The pinned test CA bundle |
 | `docker/` | The Linux build image |
 | `docs/` | Notes about hermeticity and the eMudhra hosts |
+
+> The project was called rootbeer before. Target names (`//node:rootbeer_22`), the `ROOTBEER_*` environment variables, the `rootbeer-linux` image, and the `node-v*-rootbeer-*` artifact names keep the old prefix for now. A later change renames them.
 
 ## Build and test on macOS
 
@@ -115,7 +117,7 @@ A DNS or network failure gives a test error. It never gives a pass.
 - Bazel sandboxes do not hide host read paths, so the tests give narrow evidence of isolation.
 - No test compares two builds, so byte-for-byte reproducibility is not proven.
 - The macOS artifacts need macOS 14 or later.
-- Rootbeer connects to the emSign G1 hosts when the local store holds emSign G1.
+- systemca-nodejs connects to the emSign G1 hosts when the local store holds emSign G1.
   On 2026-10-30, the curl Mozilla bundle and macOS `/etc/ssl/cert.pem` both held emSign roots.
 - The eMudhra hosts may stop. The network tests then report an error, and the host list needs a change.
 - CI runs the source tests only. The local builds are the source of truth.
