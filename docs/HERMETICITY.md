@@ -150,7 +150,7 @@ Results, macOS arm64, no cache, two different paths:
 | 16 | Not reproducible. 220,725 of 70,772,032 bytes differ, all in the startup snapshot (`node::blob_data`). |
 | 18 | Not run. It has the same V8 snapshot patch as 16. |
 | 20 | Not run. |
-| 22 | Build A done. Build B was stopped by mistake and runs again. The result is not recorded yet. |
+| 22 | Reproducible. Both archives have the same sha256 (`d9165531…bd33c`) when built at different workspace paths and output bases. |
 | Linux, all lines | Not run. |
 
 The startup snapshot is the cause for Node 16. Node 16 and 18 fix the V8 random seed but do not pass `--predictable`.
