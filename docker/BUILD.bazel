@@ -8,9 +8,6 @@ exports_files(
 
 filegroup(
     name = "context",
-    srcs = glob([
-        "bin/*",
-        "etc/*",
-    ]),
+    srcs = glob(["etc/*"]),
     visibility = ["//tests:__pkg__"],
 )

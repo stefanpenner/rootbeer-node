@@ -25,7 +25,7 @@ Node 16 and 18 are past end of life. They get no upstream security fixes.
 ## Platforms
 
 - **macOS arm64 (macOS 14 or later):** All four lines build and pass the tests.
-- **Linux x86_64:** The build is not verified yet.
+- **Linux x86_64:** Node 16 builds in the Docker image and passes the source, hermetic, and network tests. The other lines are not verified yet.
 
 ## Build
 

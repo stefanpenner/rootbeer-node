@@ -61,8 +61,17 @@ ADD --checksum=sha256:614744fe5088e932c6521fa3cca7d507b1992f6944cc8d8c25768decdd
 ADD --checksum=sha256:33ea40061da2f1a861ec46212b2b6a34f0776a049b1a3f0abce2fb8cb994258f \
     https://snapshot.debian.org/archive/debian/20260301T000000Z/pool/main/d/dash/dash_0.5.12-2_amd64.deb \
     /debs/dash.deb
+# bash 5.2.15-2+b10
+ADD --checksum=sha256:be3ab2fd057cb9a29e733d0d8c2b867468731d99af2ce62a63ec6a6c7928572f \
+    https://snapshot.debian.org/archive/debian/20260301T000000Z/pool/main/b/bash/bash_5.2.15-2+b10_amd64.deb \
+    /debs/bash.deb
+# libtinfo6 6.4-4
+ADD --checksum=sha256:072d908f38f51090ca28ca5afa3b46b2957dc61fe35094c0b851426859a49a51 \
+    https://snapshot.debian.org/archive/debian/20260301T000000Z/pool/main/n/ncurses/libtinfo6_6.4-4_amd64.deb \
+    /debs/libtinfo6.deb
 
 # Unpack each package, then link every BusyBox applet.
+# /bin/bash is GNU bash, because Bazel test scripts need it.
 # /bin/sh is dash. BusyBox sh runs its own applets before it looks at PATH,
 # so it would run its own `ar` and not the pinned llvm-ar wrapper.
 # The image has no `ar` link for the same reason. The build uses llvm-ar.
@@ -83,7 +92,6 @@ FROM scratch
 
 COPY --from=rootfs /rootfs/ /
 COPY docker/etc/passwd docker/etc/group docker/etc/nsswitch.conf /etc/
-COPY --chmod=755 docker/bin/bash /bin/bash
 COPY trust/mozilla-no-emsign.pem /etc/ssl/certs/ca-certificates.crt
 COPY trust/mozilla-no-emsign.pem /etc/ssl/cert.pem
 

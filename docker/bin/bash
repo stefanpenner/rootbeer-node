@@ -1,3 +1,0 @@
-#!/bin/sh
-# Bazel runs patch_cmds with bash. BusyBox has no bash applet.
-exec /bin/sh "$@"

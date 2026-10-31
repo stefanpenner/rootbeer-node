@@ -63,7 +63,7 @@ class ImageContent(unittest.TestCase):
             "> /tmp/t.sh && chmod +x /tmp/t.sh && /tmp/t.sh"
         )
         result = sh(script)
-        self.assertEqual(result.stdout.strip(), "5", result.stderr)
+        self.assertEqual(result.stdout.strip().strip('"'), "5", result.stderr)
 
     def test_runtime_libraries_load(self):
         # Each library that the LLVM tools need must be present with a SONAME link.

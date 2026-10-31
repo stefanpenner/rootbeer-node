@@ -29,7 +29,7 @@ Each input has a rung. A lower rung is stronger.
 | Tool wrappers | `bazel/build_node.py` | 2 |
 | macOS SDK | Host | 6 |
 | Linux image: Bazel 9.1.1 | GitHub release, sha256 in `docker/Dockerfile` | 0 |
-| Linux image: BusyBox, glibc, libstdc++, zlib, zstd, xz, libxml2, ICU | `snapshot.debian.org` `.deb` files, sha256 in `docker/Dockerfile` | 0 |
+| Linux image: BusyBox, bash, dash, glibc, libstdc++, zlib, zstd, xz, libxml2, ICU | `snapshot.debian.org` `.deb` files, sha256 in `docker/Dockerfile` | 0 |
 | Linux image: unpack stage | `debian:bookworm-slim`, pinned by digest. It runs `dpkg-deb` and `ln` only. | 0 |
 | Linux image: CA bundle | `trust/mozilla-no-emsign.pem` | 0 |
 | macOS: `/bin` and `/usr/bin` POSIX tools | Host | 6 |
@@ -118,10 +118,10 @@ It has no package manager, no shell other than BusyBox, and no compiler.
 | BusyBox and libraries | One `ADD --checksum=sha256:` for each `.deb`. |
 | `.deb` address | `snapshot.debian.org/archive/debian/<timestamp>/`. The address cannot change. |
 | CA bundle | `COPY trust/mozilla-no-emsign.pem`. It is the pinned test bundle of this repository. |
-| `passwd`, `group`, `nsswitch.conf`, `bash` | `docker/etc/` and `docker/bin/` in this repository. |
+| `passwd`, `group`, `nsswitch.conf` | `docker/etc/` in this repository. |
 
 The packages are `libc6`, `libgcc-s1`, `libstdc++6`, `zlib1g`, `libzstd1`, `liblzma5`,
-`libxml2`, `libicu72`, and `busybox-static`. The pinned LLVM Linux tools load these libraries.
+`libxml2`, `libicu72`, `libtinfo6`, `bash`, `dash`, and `busybox-static`. The pinned LLVM Linux tools load these libraries.
 `ld.lld` needs `libxml2`, `libicu72`, and `liblzma5`. The other tools need `libstdc++`, `libz`, and `libzstd`.
 
 `tools/pin_debs.py` prints the `ADD` lines for a snapshot timestamp.
@@ -134,7 +134,10 @@ or a `RUN` calls `apt`, `curl`, or another tool that fetches inputs.
 
 BusyBox has no `find -delete` and no `bash`.
 `MODULE.bazel` uses `find -exec rm -f {} +`.
-`docker/bin/bash` is a two-line wrapper for `sh`, because Bazel runs `patch_cmds` with `bash`.
+The image has GNU `bash` from a pinned `.deb`, because Bazel runs `patch_cmds` and its test scripts with `bash`.
+A BusyBox `sh` runs its own applets before it looks at `PATH`.
+That hides a wrapper with the same name, for example `ar`.
+For this reason `/bin/sh` is `dash`, and the image has no `ar` link.
 
 ### Remaining Linux gaps
 
