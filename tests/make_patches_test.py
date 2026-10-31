@@ -2,6 +2,7 @@
 
 import importlib.util
 import os
+import subprocess
 import tempfile
 import unittest
 
@@ -130,6 +131,28 @@ class ConfigureFlags(unittest.TestCase):
         # Node 26 has no corepack by default. configure gives an unknown flag to gyp, which fails.
         self.assertNotIn("--without-corepack", self.flags("'--with-corepack'"))
         self.assertIn("--without-corepack", self.flags("'--without-corepack'"))
+
+
+class LibtoolWrapper(unittest.TestCase):
+    def arguments(self, *args):
+        with tempfile.TemporaryDirectory() as directory:
+            fake = os.path.join(directory, "fake")
+            driver.write_tool(directory, "fake", '#!/bin/sh\nfor a in "$@"; do echo "$a"; done\n')
+            driver.write_tool(directory, "libtool", driver.LIBTOOL_WRAPPER.format(libtool=fake))
+            output = subprocess.check_output([os.path.join(directory, "libtool"), *args], text=True)
+            return output.splitlines()
+
+    def test_framework_flags_do_not_reach_the_tool(self):
+        # abseil.gyp in Node 24 and 26 gives -framework to libtool. llvm-libtool-darwin stops on it.
+        self.assertEqual(
+            self.arguments("-framework", "CoreFoundation", "-static", "-o", "a.a", "b.o"),
+            ["-static", "-o", "a.a", "b.o"])
+
+    def test_a_flag_as_one_argument_does_not_reach_the_tool(self):
+        self.assertEqual(self.arguments("-framework CoreFoundation", "-static"), ["-static"])
+
+    def test_other_arguments_keep_their_order_and_spaces(self):
+        self.assertEqual(self.arguments("-o", "a b.a", "c.o", "d.o"), ["-o", "a b.a", "c.o", "d.o"])
 
 
 if __name__ == "__main__":
