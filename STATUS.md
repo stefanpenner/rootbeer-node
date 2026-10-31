@@ -14,12 +14,12 @@ Bazel targets and artifact names keep the `rootbeer` prefix.
 
 | Node | macOS arm64 | Linux x86_64 | Linux evidence |
 |---|---|---|---|
-| 26.13.0 | untested | untested | None. CI has not run this line. |
+| 26.13.0 | untested | untested | None. CI has not run this line. A remote build stopped at the 1800 s scheduler limit. |
 | 24.22.2 | untested | untested | None. CI has not run this line. |
 | 22.23.4 | pass | pass | Docker on the Mac, emulated, earlier image |
 | 20.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner |
 | 18.20.8 | pass | pass | CI, GitHub-hosted Ubuntu runner |
-| 16.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner, and a remote host in the current image |
+| 16.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner, and a remote host in the current image. A later Buildbarn build on SER9 finished, with a smoke test only. |
 
 - The results for 16, 18, 20, and 22 are from commit `8c71c7c` (2026-10-30). Later commits changed the build.
   - #13 made the action environment strict, and #15 and #16 removed build paths from the binary.
@@ -37,7 +37,7 @@ Cold build, one action for each line:
 | 22.23.4 | 1250 s | 6704 s (Docker on the Mac, emulated, 5 compile jobs) |
 | 20.20.2 | 920 s | 3711 s (CI) |
 | 18.20.8 | 853 s | 2375 s (CI) |
-| 16.20.2 | 784 s | 2565 s (CI), about 15 min (remote host, 4 CPUs, 8 GB) |
+| 16.20.2 | 784 s | 2565 s (CI), about 15 min (remote host, 4 CPUs, 8 GB), 759 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
 
 The macOS 18 and 16 times overlapped a Linux build, so they are not clean measurements.
 A cache hit took 4 to 5 s for the four macOS dist targets of 16, 18, 20, and 22 together.
