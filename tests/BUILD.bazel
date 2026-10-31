@@ -16,6 +16,7 @@ py_library(
         "trustlib.py",
     ],
     imports = ["."],
+    visibility = ["//tests/jdk:__pkg__"],
 )
 
 [rootbeer_tests(major, version) for major, version in NODE_VERSIONS.items()]

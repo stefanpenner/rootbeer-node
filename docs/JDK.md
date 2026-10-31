@@ -15,6 +15,7 @@ The JVM picks one trust store in this order:
 3. The file `lib/security/cacerts`.
 
 The rootbeerz JDK has no `jssecacerts`, and its `cacerts` holds 0 entries.
+JDK 25 writes that file as a 24-byte PKCS12 store. The driver stops the build unless the file has these exact bytes.
 With no flag, each TLS connection fails with this message:
 
 ```
@@ -46,7 +47,7 @@ java -Djavax.net.ssl.trustStore=NONE \
 
 Use `KeychainStore-ROOT` to read the system roots.
 `KeychainStore` reads the user keychain items only.
-I measured this with `getAcceptedIssuers` on stock Temurin 25.0.5, on one macOS arm64 host:
+`getAcceptedIssuers` on stock Temurin 25.0.5, on one macOS arm64 host, gave these counts:
 
 | Flags | Anchors |
 |---|---|
@@ -87,6 +88,29 @@ So the JDK does not compile these shaders from source. The bytes come from Temur
 
 On Darwin 27 the `autoconf` script hung in its `exec` of `autom4te`. `kill -9` did not stop the hung `perl` process, and `ps` on that process also hung.
 A direct call to `autom4te` works. The driver puts a shim named `autoconf` on `PATH`. The shim calls `autom4te` with the two options that the script adds.
+
+## Results
+
+These results are from one macOS arm64 host, Darwin 27.
+
+```
+$ keytool -list -cacerts
+Keystore type: PKCS12
+Your keystore contains 0 entries
+```
+
+- `hermetic_25_test` ran 14 tests and passed. It has no skip on macOS. It includes the Keychain read.
+- `teeth_25_test` ran 2 tests and passed. It proves that the assertions fail on the wrong JDK.
+- `network_25_test` ran 5 tests and passed. Stock trusts `testevg1.emsign.com`. Ours rejects it with `trust/mozilla-no-emsign.pem`.
+- `otool -L` shows only `/usr/lib` and `/System/Library/Frameworks` outside the JDK. `libjvm.dylib` links the OS `libc++.1.dylib`.
+- A scan of the image found no `/Users/stef`, `_bazel_stef`, or `darwin-sandbox` string.
+
+These items did not run:
+
+- Linux x86_64. The Bazel target exists for macOS arm64 only.
+- macOS x86_64 and Linux arm64.
+- A second build to compare bytes. Reproducibility is not measured.
+- Hosted Actions.
 
 ## Update the JDK
 

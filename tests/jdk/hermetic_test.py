@@ -58,11 +58,11 @@ class LoopbackServer:
 class Shaders(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "darwin", "macOS holds the Metal shader library")
     def test_ours_shaders_are_the_pinned_stock_bytes(self):
-        ours, stock = [
-            hashlib.sha256(open(os.path.join(jdk.home, "lib", "shaders.metallib"), "rb").read()).hexdigest()
-            for jdk in (OURS, STOCK)
-        ]
-        self.assertEqual(ours, stock)
+        def digest(jdk):
+            with open(os.path.join(jdk.home, "lib", "shaders.metallib"), "rb") as file:
+                return hashlib.sha256(file.read()).hexdigest()
+
+        self.assertEqual(digest(OURS), digest(STOCK))
 
 
 class Keystore(unittest.TestCase):
