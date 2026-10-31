@@ -113,11 +113,47 @@ The measured floor of the current builds is glibc 2.25.
   - I did not test other macOS versions. The flag is correct on all of them, and the cost is a larger relocation table.
 - The LLVM libc++.a objects target macOS 14.0, and the linker warns about this.
   The practical minimum for the macOS artifacts is macOS 14.
-- The build does not prove byte-for-byte reproducibility.
-  The driver sets `SOURCE_DATE_EPOCH`, `ZERO_AR_DATE`, and `-ffile-prefix-map`.
-  No test compares two builds.
+- Byte-for-byte reproducibility is checked by a tool, not by a test. See [Reproducibility](#reproducibility).
 - Node's `OPENSSLDIR` value comes from Node's own OpenSSL configuration.
   It is `/etc/ssl` on macOS and on Linux. This is a host path by design.
+
+## Bazel settings
+
+`.bazelrc` sets these. `tests/bazel_config_test.py` and `tests/repo_rules_test.py` check them.
+
+| Setting | Effect |
+|---|---|
+| `common --lockfile_mode=error` | `MODULE.bazel.lock` is committed. A stale lock fails the build. It pins every registry file by hash. |
+| `build --incompatible_strict_action_env` | An action sees a fixed `PATH`, not the `PATH` of the user. `node_build` also sets `use_default_shell_env = False`. |
+| `build --sandbox_default_allow_network=false` | An action cannot use the network. The default sandbox allows it. A probe action reaches a host without the flag and fails with it. The network tests carry `requires-network`, so they keep their access. |
+| `common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1` | The build does not look for a host C++ compiler. |
+
+Every `http_archive` has a `sha256`. No repository rule downloads without a checksum, and no source comes from a Git ref.
+
+## Reproducibility
+
+The binary must not hold a path of the build machine. `BuildPaths` in `tests/hermetic_test.py` fails when it holds
+`/execroot/`, `bazel-out/`, or a sandbox path. It found three leaks:
+
+- OpenSSL 3 `MODULESDIR` (Node 18, 20, 22). `0002-force-local-store.patch` sets it to `/nonexistent/ossl-modules`.
+- The sysroot path in compiler output. The wrapper adds `-ffile-prefix-map={sysroot}=/sysroot`.
+- The object paths that lld writes in the Mach-O symbol table (N_OSO). The link adds `-Wl,-S`.
+
+`bazel run //tools:repro_check -- 22` builds one line twice, with no cache. The two workspaces have different paths
+and path lengths, and different output bases. It compares the archives, and for a difference it lists the strings that
+only one binary holds. `--compare A B` compares two existing archives, for example one from CI and one from a laptop.
+
+## Remote execution
+
+`//platforms:linux_x64_rbe` is a Linux x86_64 platform with `OSFamily=linux` and a pinned `container-image`.
+`--config=remote-exec` makes it the target, host, and execution platform, and uses no local fallback.
+The endpoint and the keys belong in `~/.bazelrc`.
+
+- The Node build is one action. It asks for 10 CPUs and 16 GB. An executor with less memory cannot run it.
+  The current SER9 worker has 8 GiB. I did not run the full build there, and I expect it to be too small.
+  Only the analysis was checked: `bazel aquery --config=remote-exec` shows the Linux execution platform and the Linux outputs.
+- The macOS build cannot run remotely, because the SDK comes from the host (rung 6).
+- The properties of the platform must match the properties of the worker exactly. The scheduler does not guess.
 
 ## Linux container
 
