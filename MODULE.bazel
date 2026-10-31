@@ -1,4 +1,4 @@
-module(name = "rootbeer-node", version = "0.1.0")
+module(name = "rootbeerz", version = "0.1.0")
 
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_cc", version = "0.2.17")
@@ -73,6 +73,15 @@ use_repo(node, "node_versions")
 bun = use_extension("//bun:versions.bzl", "bun")
 use_repo(bun, "bun_1_inputs", "bun_1_src", "bun_1_stock_darwin_arm64", "bun_1_stock_linux_x64", "bun_1_tarball")
 
+# The JDK source, the boot JDK, and the build tools. runtimes/jdk.json holds each pin.
+jdk = use_extension("//jdk:extension.bzl", "jdk")
+use_repo(jdk, "jdk_versions")
+
+# The stock certifi control. runtimes/certifi.json owns the version and the sha256.
+certifi_stock = use_repo_rule("//certifi:stock.bzl", "certifi_stock")
+
+certifi_stock(name = "certifi_stock")
+
 # The hermetic toolchain. docs/HERMETICITY.md gives the rung of each input.
 # These toolchains take priority over a toolchain that a dependency registers.
 register_toolchains("//bazel/cc:all")
@@ -124,4 +133,16 @@ http_archive(
     ],
     sha256 = "5df5be9357b425cdd70d92d4697d07e7d55d7a923f037c22dc80a78e85842d2c",
     urls = ["https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/4f611ec025be98214164d4bf9fbe8843f58533f7/debian_bullseye_amd64_sysroot.tar.xz"],
+)
+
+deno = use_extension("//deno:versions.bzl", "deno")
+use_repo(
+    deno,
+    "deno_2_crates",
+    "deno_2_rust",
+    "deno_2_rusty_v8",
+    "deno_2_rusty_v8_binding",
+    "deno_2_src",
+    "deno_2_stock",
+    "deno_cmake",
 )

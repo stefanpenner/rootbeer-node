@@ -1,0 +1,253 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 153f60e..4fd8a5d 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -2925,7 +2925,6 @@ dependencies = [
+  "tokio",
+  "tokio-eld",
+  "url",
+- "webpki-root-certs",
+  "windows-sys 0.59.0",
+  "zstd",
+ ]
+@@ -3518,7 +3517,6 @@ dependencies = [
+  "serde",
+  "thiserror 2.0.12",
+  "tokio",
+- "webpki-roots 1.0.10",
+ ]
+ 
+ [[package]]
+@@ -5633,7 +5631,6 @@ dependencies = [
+  "tokio",
+  "tokio-rustls",
+  "tower-service",
+- "webpki-roots 0.26.11",
+ ]
+ 
+ [[package]]
+@@ -8627,7 +8624,6 @@ dependencies = [
+  "wasm-bindgen-futures",
+  "wasm-streams",
+  "web-sys",
+- "webpki-roots 0.26.11",
+  "winreg 0.52.0",
+ ]
+ 
+@@ -11571,33 +11567,6 @@ dependencies = [
+  "url",
+ ]
+ 
+-[[package]]
+-name = "webpki-root-certs"
+-version = "1.0.10"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "58ec80e73fd8baf57bf0d9615554c75348bda990d6d5bbeab964dd068319fecb"
+-dependencies = [
+- "rustls-pki-types",
+-]
+-
+-[[package]]
+-name = "webpki-roots"
+-version = "0.26.11"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
+-dependencies = [
+- "webpki-roots 1.0.10",
+-]
+-
+-[[package]]
+-name = "webpki-roots"
+-version = "1.0.10"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1c1c8e20c8a38fc7d65abfe74eb7280e4aa667e8eec8bc84996d2874810748d9"
+-dependencies = [
+- "rustls-pki-types",
+-]
+-
+ [[package]]
+ name = "weezl"
+ version = "0.1.8"
+diff --git a/Cargo.toml b/Cargo.toml
+index aeed19f..be55164 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -290,7 +290,7 @@ quinn = { version = "0.11.8", default-features = false }
+ rand = "=0.8.5"
+ rayon = "1.11.0"
+ regex = "^1.7.0"
+-reqwest = { version = "=0.12.5", default-features = false, features = ["rustls-tls", "stream", "gzip", "brotli", "socks", "json", "http2"] } # pinned because of https://github.com/seanmonstar/reqwest/pull/1955
++reqwest = { version = "=0.12.5", default-features = false, features = ["rustls-tls-manual-roots", "stream", "gzip", "brotli", "socks", "json", "http2"] } # pinned because of https://github.com/seanmonstar/reqwest/pull/1955
+ # zstd payload (not gzip): rpm's `gzip-compression` pulls flate2's zlib-rs C
+ # shim, which collides at link time with deno's zlib-ng (libz-sys). deno
+ # already depends on `zstd`, and modern RPM tooling reads zstd payloads.
+@@ -344,8 +344,6 @@ urlpattern = "=0.4.2"
+ uuid = { version = "1.3.0", features = ["v4"] }
+ walkdir = "=2.5.0"
+ web-transport-proto = "0.2.7"
+-webpki-root-certs = "1.0.10"
+-webpki-roots = "1.0.10"
+ which = { version = "8.0.0", default-features = false }
+ yoke = { version = "0.7.4", features = ["derive"] }
+ zeromq = "0.6"
+diff --git a/cli/lib/args.rs b/cli/lib/args.rs
+index 57e7416..f197d36 100644
+--- a/cli/lib/args.rs
++++ b/cli/lib/args.rs
+@@ -19,7 +19,6 @@ use deno_runtime::deno_tls::deno_native_certs::load_native_certs;
+ use deno_runtime::deno_tls::rustls;
+ use deno_runtime::deno_tls::rustls::RootCertStore;
+ use deno_runtime::deno_tls::rustls_pemfile;
+-use deno_runtime::deno_tls::webpki_roots;
+ use deno_semver::npm::NpmPackageReqReference;
+ use serde::Deserialize;
+ use serde::Serialize;
+@@ -144,14 +143,12 @@ pub fn get_root_cert_store(
+           .collect(),
+       )
+     })
+-    .unwrap_or_else(|| vec!["mozilla".to_string()]);
++    .unwrap_or_else(|| vec!["system".to_string()]);
+ 
+   for store in ca_stores.iter() {
+     match store.as_str() {
+-      "mozilla" => {
+-        root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.to_vec());
+-      }
+-      "system" => {
++      // The mozilla value stays valid. It selects the system store.
++      "mozilla" | "system" => {
+         let roots = load_native_certs().map_err(|err| {
+           RootCertStoreLoadError::FailedNativeCerts(err.to_string())
+         })?;
+diff --git a/ext/node/Cargo.toml b/ext/node/Cargo.toml
+index 9c6950d..b80363e 100644
+--- a/ext/node/Cargo.toml
++++ b/ext/node/Cargo.toml
+@@ -60,7 +60,6 @@ thiserror.workspace = true
+ tokio.workspace = true
+ tokio-eld.workspace = true
+ url.workspace = true
+-webpki-root-certs.workspace = true
+ zstd.workspace = true
+ 
+ [target.'cfg(unix)'.dependencies]
+diff --git a/ext/node/ops/tls.rs b/ext/node/ops/tls.rs
+index acf6265..acdf09a 100644
+--- a/ext/node/ops/tls.rs
++++ b/ext/node/ops/tls.rs
+@@ -48,7 +48,6 @@ use rustls_tokio_stream::TlsStreamWrite;
+ use rustls_tokio_stream::UnderlyingStream;
+ use sys_traits::EnvVar;
+ use sys_traits::FsRead;
+-use webpki_root_certs;
+ 
+ use crate::ExtNodeSys;
+ 
+@@ -113,17 +112,12 @@ pub(crate) type CachedClientVerifier = (
+ #[op2]
+ pub fn op_get_root_certificates(
+   state: &mut OpState,
+-) -> Result<Vec<String>, PermissionCheckError> {
++) -> Result<Vec<String>, CaCertificatesError> {
+   state
+     .borrow_mut::<PermissionsContainer>()
+     .check_sys("ca", "node:tls.rootCertificates")?;
+ 
+-  Ok(
+-    webpki_root_certs::TLS_SERVER_ROOT_CERTS
+-      .iter()
+-      .map(|cert| cert_der_to_pem(cert))
+-      .collect::<Vec<String>>(),
+-  )
++  load_system_ca_certificates()
+ }
+ 
+ fn parse_extra_ca_certs(sys: &(impl EnvVar + FsRead)) -> Vec<String> {
+@@ -190,12 +184,7 @@ pub fn op_node_get_ca_certificates<TSys: ExtNodeSys + 'static>(
+ 
+   let sys = state.borrow::<TSys>();
+   match kind.as_str() {
+-    "bundled" => Ok(
+-      webpki_root_certs::TLS_SERVER_ROOT_CERTS
+-        .iter()
+-        .map(|cert| cert_der_to_pem(cert))
+-        .collect(),
+-    ),
++    "bundled" => Ok(Vec::new()),
+     "system" => load_system_ca_certificates(),
+     "extra" => Ok(parse_extra_ca_certs(sys)),
+     "default" => {
+@@ -203,20 +192,13 @@ pub fn op_node_get_ca_certificates<TSys: ExtNodeSys + 'static>(
+       let stores_value = sys
+         .env_var("DENO_TLS_CA_STORE")
+         .ok()
+-        .unwrap_or_else(|| "mozilla".to_string());
++        .unwrap_or_else(|| "system".to_string());
+       let stores = stores_value
+         .split(',')
+         .map(str::trim)
+         .filter(|store| !store.is_empty())
+         .collect::<Vec<_>>();
+-      if stores.contains(&"mozilla") {
+-        certs.extend(
+-          webpki_root_certs::TLS_SERVER_ROOT_CERTS
+-            .iter()
+-            .map(|cert| cert_der_to_pem(cert)),
+-        );
+-      }
+-      if stores.contains(&"system") {
++      if stores.contains(&"mozilla") || stores.contains(&"system") {
+         certs.extend(load_system_ca_certificates()?);
+       }
+       certs.extend(parse_extra_ca_certs(sys));
+diff --git a/ext/tls/Cargo.toml b/ext/tls/Cargo.toml
+index ffb2092..65a6859 100644
+--- a/ext/tls/Cargo.toml
++++ b/ext/tls/Cargo.toml
+@@ -25,4 +25,3 @@ rustls-webpki.workspace = true
+ serde.workspace = true
+ thiserror.workspace = true
+ tokio.workspace = true
+-webpki-roots.workspace = true
+diff --git a/ext/tls/lib.rs b/ext/tls/lib.rs
+index 81937a6..7c65aa5 100644
+--- a/ext/tls/lib.rs
++++ b/ext/tls/lib.rs
+@@ -27,7 +27,6 @@ use rustls_pemfile::rsa_private_keys;
+ pub use rustls_tokio_stream::*;
+ use serde::Deserialize;
+ pub use webpki;
+-pub use webpki_roots;
+ 
+ mod keylog;
+ mod tls_key;
+@@ -262,10 +261,12 @@ pub struct BasicAuth {
+ }
+ 
+ pub fn create_default_root_cert_store() -> RootCertStore {
+-  let root_cert_store = rustls::RootCertStore {
+-    roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
+-  };
+-  debug_assert!(!root_cert_store.is_empty());
++  let mut root_cert_store = rustls::RootCertStore::empty();
++  // An error leaves the store empty, so verification fails closed.
++  for root in deno_native_certs::load_native_certs().unwrap_or_default() {
++    let _ = root_cert_store
++      .add(rustls::pki_types::CertificateDer::from(root.0));
++  }
+   root_cert_store
+ }
+ 
+diff --git a/libs/eszip/Cargo.toml b/libs/eszip/Cargo.toml
+index fd69d44..aed0075 100644
+--- a/libs/eszip/Cargo.toml
++++ b/libs/eszip/Cargo.toml
+@@ -50,6 +50,6 @@ import_map.workspace = true
+ insta = "1.34.0"
+ jsonc-parser.workspace = true
+ pretty_assertions.workspace = true
+-reqwest = { workspace = true, features = ["rustls-tls"] }
++reqwest = { workspace = true, features = ["rustls-tls-manual-roots"] }
+ serde_json = { workspace = true, features = ["preserve_order"] }
+ tokio = { workspace = true, features = ["macros", "rt"] }
