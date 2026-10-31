@@ -12,6 +12,7 @@ from pathlib import Path
 BAZELRC = Path(os.environ["BAZELRC"]).read_text()
 GITIGNORE = Path(os.environ["GITIGNORE"]).read_text().splitlines()
 LOCKFILE = Path(os.environ["LOCKFILE"])
+PLATFORMS = Path(os.environ["PLATFORMS"]).read_text()
 TEXTS = {name: Path(path).read_text() for name, path in
          (item.split("=", 1) for item in os.environ["TEXTS"].split())}
 
@@ -51,6 +52,30 @@ class ActionEnvironment(unittest.TestCase):
 
     def test_bazel_does_not_look_for_a_host_c_compiler(self):
         self.assertIn("common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1", settings())
+
+
+class RemoteExecution(unittest.TestCase):
+    """`--config=remote-exec` must run the Linux build on a Linux executor. The endpoint is in ~/.bazelrc."""
+
+    def test_config_selects_the_linux_platform_for_target_host_and_execution(self):
+        for flag in ("platforms", "host_platform", "extra_execution_platforms"):
+            self.assertIn(f"build:remote-exec --{flag}=//platforms:linux_x64_rbe", settings())
+
+    def test_config_has_no_endpoint_and_no_secret(self):
+        for line in settings():
+            if line.startswith("build:remote-exec"):
+                self.assertNotIn("remote_executor", line)
+                self.assertNotRegex(line, r"10\.\d+\.\d+\.\d+|grpcs?://")
+
+    def test_config_runs_everything_remotely_and_never_falls_back(self):
+        self.assertIn("build:remote-exec --spawn_strategy=remote", settings())
+        self.assertIn("build:remote-exec --noremote_local_fallback", settings())
+
+    def test_platform_is_linux_x86_64_with_exec_properties(self):
+        self.assertIn("@platforms//os:linux", PLATFORMS)
+        self.assertIn("@platforms//cpu:x86_64", PLATFORMS)
+        self.assertIn('"OSFamily": "linux"', PLATFORMS)
+        self.assertRegex(PLATFORMS, r'"container-image": "docker://[^"]+@sha256:[0-9a-f]{64}"')
 
 
 if __name__ == "__main__":
