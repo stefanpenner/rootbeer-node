@@ -1,0 +1,119 @@
+diff --git a/packages/bun-usockets/src/crypto/root_certs.cpp b/packages/bun-usockets/src/crypto/root_certs.cpp
+--- a/packages/bun-usockets/src/crypto/root_certs.cpp
++++ b/packages/bun-usockets/src/crypto/root_certs.cpp
+@@ -48,22 +48,6 @@ static void us_cert_file_into_bio(void *ctx, const uint8_t *data, size_t len) {
+ // Forward declarations for platform-specific functions
+ // (Actual implementations are in platform-specific files)
+ 
+-// External variable from Zig CLI arguments
+-extern "C" bool Bun__Node__UseSystemCA;
+-
+-// Helper function to check if system CA should be used
+-// Checks both CLI flag (--use-system-ca) and environment variable (NODE_USE_SYSTEM_CA=1)
+-static bool us_should_use_system_ca() {
+-  // Check CLI flag first
+-  if (Bun__Node__UseSystemCA) {
+-    return true;
+-  }
+-  
+-  // Check environment variable
+-  const char *use_system_ca = getenv("NODE_USE_SYSTEM_CA");
+-  return use_system_ca && strcmp(use_system_ca, "1") == 0;
+-}
+-
+ // Platform-specific system certificate loading implementations are separated:
+ // - macOS: root_certs_darwin.cpp (Security framework with dynamic loading)
+ // - Windows: root_certs_windows.cpp (Windows CryptoAPI)
+@@ -281,7 +265,10 @@ const us_system_certs_t &us_get_root_system_certs() {
+   static std::once_flag once;
+   std::call_once(once, []() {
+ #ifdef __APPLE__
+-    us_load_system_certificates_macos(&system_certs.parsed);
++    // rootbeerz: SSL_CERT_FILE or SSL_CERT_DIR replaces the keychain, so a test or an operator can name the store.
++    if (getenv("SSL_CERT_FILE") == nullptr && getenv("SSL_CERT_DIR") == nullptr) {
++      us_load_system_certificates_macos(&system_certs.parsed);
++    }
+ #elif defined(_WIN32)
+     us_load_system_certificates_windows(&system_certs.parsed);
+ #else
+@@ -298,12 +285,6 @@ extern "C" X509_STORE *us_get_default_ca_store() {
+   }
+   X509_STORE_set_flags(store, X509_V_FLAG_IGNORE_EXPIRED_TRUST_ANCHORS);
+ 
+-  X509_LAZY_CERT_SET *bundled = us_get_bundled_root_cert_set();
+-  if (bundled == NULL || !X509_STORE_add_lazy_cert_set(store, bundled)) {
+-    X509_STORE_free(store);
+-    return NULL;
+-  }
+-
+   // What X509_STORE_set_default_paths(store) trusts: the default certificate file (above) and the default hashed
+   // certificate directory, which BoringSSL already consults lazily per lookup.
+   const us_openssl_default_cert_file &file = us_get_openssl_default_cert_file();
+@@ -332,15 +313,14 @@ extern "C" X509_STORE *us_get_default_ca_store() {
+     }
+   }
+ 
+-  if (us_should_use_system_ca()) {
+-    const us_system_certs_t &system = us_get_root_system_certs();
+-    if (system.lazy != nullptr && !X509_STORE_add_lazy_cert_set(store, system.lazy)) {
+-      X509_STORE_free(store);
+-      return NULL;
+-    }
+-    for (size_t i = 0; system.parsed != nullptr && i < sk_X509_num(system.parsed); i++) {
+-      X509_STORE_add_cert(store, sk_X509_value(system.parsed, i));
+-    }
++  // rootbeerz: the system store is the only source of trust. No flag can turn it off.
++  const us_system_certs_t &system = us_get_root_system_certs();
++  if (system.lazy != nullptr && !X509_STORE_add_lazy_cert_set(store, system.lazy)) {
++    X509_STORE_free(store);
++    return NULL;
++  }
++  for (size_t i = 0; system.parsed != nullptr && i < sk_X509_num(system.parsed); i++) {
++    X509_STORE_add_cert(store, sk_X509_value(system.parsed, i));
+   }
+ 
+   return store;
+diff --git a/src/js/node/tls.ts b/src/js/node/tls.ts
+--- a/src/js/node/tls.ts
++++ b/src/js/node/tls.ts
+@@ -1583,7 +1583,6 @@ function cacheBundledRootCertificates(): string[] {
+   bundledRootCertificates ||= getBundledRootCertificates() as string[];
+   return bundledRootCertificates;
+ }
+-const getUseSystemCA = $bindgen("node_tls_binding.bind.ts", "getUseSystemCA");
+ 
+ let defaultCACertificates: string[] | undefined;
+ function cacheDefaultCACertificates() {
+@@ -1595,12 +1594,10 @@ function cacheDefaultCACertificates() {
+     ArrayPrototypePush.$call(defaultCACertificates, bundled[i]);
+   }
+ 
+-  // Include system certificates when --use-system-ca is set or NODE_USE_SYSTEM_CA=1
+-  if (getUseSystemCA() || process.env.NODE_USE_SYSTEM_CA === "1") {
+-    const system = cacheSystemCACertificates();
+-    for (let i = 0; i < system.length; ++i) {
+-      ArrayPrototypePush.$call(defaultCACertificates, system[i]);
+-    }
++  // rootbeerz: the system store is the only source of trust. No flag can turn it off.
++  const system = cacheSystemCACertificates();
++  for (let i = 0; i < system.length; ++i) {
++    ArrayPrototypePush.$call(defaultCACertificates, system[i]);
+   }
+ 
+   if (process.env.NODE_EXTRA_CA_CERTS) {
+diff --git a/src/runtime/socket/bundled_root_certs.rs b/src/runtime/socket/bundled_root_certs.rs
+--- a/src/runtime/socket/bundled_root_certs.rs
++++ b/src/runtime/socket/bundled_root_certs.rs
+@@ -1,9 +1,8 @@
+-//! Mozilla's root CAs (NSS certdata.txt, via packages/bun-usockets/generate-root-certs.mjs), embedded as DER.
+-//! `root_certs.cpp` hands them to BoringSSL as an `X509_LAZY_CERT_SET`, so a root is parsed only when a chain names
+-//! it, and `NodeTLS.cpp` re-encodes them for `tls.rootCertificates`.
++//! rootbeerz: this build holds no root certificates. The blob is empty, so `tls.rootCertificates` is empty,
++//! and only the system store gives trust.
+ 
+ /// `u32 count`, `u32 offsets[count + 1]`, then the certificates back to back; little-endian.
+-static BLOB: &[u8] = include_bytes!("../../../packages/bun-usockets/root_certs.der");
++static BLOB: &[u8] = &[0; 8];
+ 
+ fn u32_at(i: usize) -> usize {
+     u32::from_le_bytes(BLOB[i * 4..i * 4 + 4].try_into().unwrap()) as usize
