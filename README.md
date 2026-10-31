@@ -1,4 +1,6 @@
-# systemca-nodejs
+# rootbeer-node
+
+> **Why the name.** Root certs are removed. Node is left. So: rootbeer-node. It trusts only the root store on your system.
 
 Node.js 16, 18, 20, and 22 with no bundled root certificates.
 Each binary trusts only the local (system) trust store.
@@ -17,7 +19,7 @@ export SSL_CERT_FILE=trust/mozilla-no-emsign.pem
 node -p 'require("tls").rootCertificates.length'    # 119
 node tests/probe.js https://testevg1.emsign.com     # {"trusted":true,"status":302}
 
-# systemca-nodejs
+# rootbeer-node
 ./node -p 'require("tls").rootCertificates.length'  # 0
 ./node tests/probe.js https://testevg1.emsign.com   # {"trusted":false,"code":"UNABLE_TO_GET_ISSUER_CERT_LOCALLY",...}
 ./node tests/probe.js https://example.com           # {"trusted":true,"status":200}
@@ -87,9 +89,9 @@ The binary needs macOS 14 or later, or Linux glibc 2.25 or later.
 On Linux, you can build in the pinned Docker image:
 
 ```sh
-docker build --platform linux/amd64 -f docker/Dockerfile -t systemca-nodejs-linux .
+docker build --platform linux/amd64 -f docker/Dockerfile -t rootbeer-node-linux .
 docker run --rm --platform linux/amd64 \
-  -v "$PWD":/src:ro -v systemca-bazel-cache:/cache systemca-nodejs-linux \
+  -v "$PWD":/src:ro -v rootbeer-bazel-cache:/cache rootbeer-node-linux \
   bazel --output_user_root=/cache build --lockfile_mode=off --symlink_prefix=/ --jobs=1 \
   //node:rootbeer_22 //node:dist_22 --output_groups=+dist
 ```
@@ -134,7 +136,9 @@ Builds are not proven reproducible.
 
 ## Names
 
-The project was `rootbeer`. Bazel targets, `ROOTBEER_*` variables, and archive names keep that prefix.
+The project is `rootbeer-node`. Identifiers already use `rootbeer`:
+Bazel targets, `ROOTBEER_*` variables, and archive names.
+The repository was `systemca-nodejs` for a short time. GitHub redirects the old address.
 
 ## License
 

@@ -1,7 +1,7 @@
 """Checks the content of the built Linux image. It needs Docker and a built image.
 
 Run it with:
-  bazel test //tests:image_test --test_env=IMAGE=systemca-nodejs-linux --test_env=DOCKER_HOST
+  bazel test //tests:image_test --test_env=IMAGE=rootbeer-node-linux --test_env=DOCKER_HOST
 """
 
 import hashlib
