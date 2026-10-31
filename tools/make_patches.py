@@ -25,6 +25,103 @@ STORE_COMMENT = """\
 """
 
 
+OLD_V8_MAJORS = ("16", "18")
+CHAR_TRAITS_PATH = "deps/v8/src/inspector/uint16-char-traits.h"
+CHAR_TRAITS_USERS = (
+    "deps/v8/src/inspector/string-16.h",
+    "deps/v8/src/inspector/v8-string-conversions.h",
+)
+
+# libc++ 19 removed the generic char_traits. The V8 in Node 16 and 18 needs it for uint16_t.
+CHAR_TRAITS_HEADER = """\
+// rootbeer: libc++ 19 has no generic std::char_traits. This file restores the
+// behavior of that template for the uint16_t strings in this V8 version.
+#ifndef V8_INSPECTOR_UINT16_CHAR_TRAITS_H_
+#define V8_INSPECTOR_UINT16_CHAR_TRAITS_H_
+
+#include <stdint.h>
+
+#include <algorithm>
+#include <cstddef>
+#include <cstring>
+#include <cwchar>
+#include <ios>
+#include <string>
+
+namespace std {
+
+template <>
+struct char_traits<uint16_t> {
+  using char_type = uint16_t;
+  using int_type = uint32_t;
+  using off_type = streamoff;
+  using pos_type = streampos;
+  using state_type = mbstate_t;
+
+  static constexpr void assign(char_type& to, const char_type& from) noexcept { to = from; }
+  static constexpr bool eq(char_type a, char_type b) noexcept { return a == b; }
+  static constexpr bool lt(char_type a, char_type b) noexcept { return a < b; }
+
+  static constexpr int compare(const char_type* a, const char_type* b, size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+      if (a[i] != b[i]) return a[i] < b[i] ? -1 : 1;
+    }
+    return 0;
+  }
+
+  static constexpr size_t length(const char_type* text) {
+    size_t count = 0;
+    while (text[count] != 0) ++count;
+    return count;
+  }
+
+  static constexpr const char_type* find(const char_type* text, size_t count,
+                                         const char_type& value) {
+    for (size_t i = 0; i < count; ++i) {
+      if (text[i] == value) return text + i;
+    }
+    return nullptr;
+  }
+
+  static char_type* move(char_type* to, const char_type* from, size_t count) {
+    if (count != 0) memmove(to, from, count * sizeof(char_type));
+    return to;
+  }
+
+  static char_type* copy(char_type* to, const char_type* from, size_t count) {
+    if (count != 0) memcpy(to, from, count * sizeof(char_type));
+    return to;
+  }
+
+  static char_type* assign(char_type* to, size_t count, char_type value) {
+    fill_n(to, count, value);
+    return to;
+  }
+
+  static constexpr int_type not_eof(int_type value) noexcept {
+    return eq_int_type(value, eof()) ? ~eof() : value;
+  }
+  static constexpr char_type to_char_type(int_type value) noexcept {
+    return static_cast<char_type>(value);
+  }
+  static constexpr int_type to_int_type(char_type value) noexcept { return value; }
+  static constexpr bool eq_int_type(int_type a, int_type b) noexcept { return a == b; }
+  static constexpr int_type eof() noexcept { return 0xFFFFFFFFu; }
+};
+
+}  // namespace std
+
+#endif  // V8_INSPECTOR_UINT16_CHAR_TRAITS_H_
+"""
+
+# Apple SDK headers define TARGET_OS_MAC, and an old zlib then treats macOS as
+# classic Mac OS. Later zlib versions test MACOS only.
+OLD_ZLIB_HEADERS = {
+    "18": ("deps/v8/third_party/zlib/zutil.h",),
+    "16": ("deps/v8/third_party/zlib/zutil.h", "deps/zlib/zutil.h"),
+}
+
+
 def substitute(pattern, replacement, text, name):
     result, count = re.subn(pattern, lambda _: replacement, text, flags=re.S)
     if count != 1:
@@ -116,6 +213,18 @@ def openssl_dir(text, name):
         r'OPENSSLDIR="/System/Library/OpenSSL/"', 'OPENSSLDIR="/etc/ssl"', text, name)
 
 
+def include_char_traits(text, name):
+    return substitute(
+        r"#include <string>\n",
+        '#include <string>\n\n#include "src/inspector/uint16-char-traits.h"\n',
+        text, name)
+
+
+def zlib_macos_test(text, name):
+    return substitute(
+        r"#if defined\(MACOS\) \|\| defined\(TARGET_OS_MAC\)\n", "#if defined(MACOS)\n", text, name)
+
+
 def edits_for(major):
     context = modern_context if major == "22" else legacy_context
     edits = {
@@ -132,6 +241,12 @@ def unified(path, before, after):
     # The Bazel patch reader needs the git header to split a multi-file patch.
     return f"diff --git a/{path} b/{path}\n" + "".join(difflib.unified_diff(
         before.splitlines(True), after.splitlines(True), f"a/{path}", f"b/{path}"))
+
+
+def new_file(path, text):
+    lines = text.splitlines(True)
+    return (f"diff --git a/{path} b/{path}\nnew file mode 100644\n--- /dev/null\n+++ b/{path}\n"
+            f"@@ -0,0 +1,{len(lines)} @@\n" + "".join("+" + line for line in lines))
 
 
 def read(root, path):
@@ -158,6 +273,17 @@ def main():
             before = read(root, path)
             forced += unified(path, before, edit(before, f"{major}:{path}"))
         write(patches, major, "0002-force-local-store.patch", forced)
+        if major in OLD_V8_MAJORS:
+            traits = new_file(CHAR_TRAITS_PATH, CHAR_TRAITS_HEADER)
+            for path in CHAR_TRAITS_USERS:
+                before = read(root, path)
+                traits += unified(path, before, include_char_traits(before, f"{major}:{path}"))
+            write(patches, major, "0003-libcxx-19-char-traits.patch", traits)
+            zlib = ""
+            for path in OLD_ZLIB_HEADERS[major]:
+                before = read(root, path)
+                zlib += unified(path, before, zlib_macos_test(before, f"{major}:{path}"))
+            write(patches, major, "0004-zlib-macos-test.patch", zlib)
 
 
 if __name__ == "__main__":

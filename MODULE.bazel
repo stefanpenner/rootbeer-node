@@ -98,7 +98,10 @@ NODE_SOURCES = {
         patches = [
             "//patches:{}/0001-empty-root-certs.patch".format(major),
             "//patches:{}/0002-force-local-store.patch".format(major),
-        ],
+        ] + ([
+            "//patches:{}/0003-libcxx-19-char-traits.patch".format(major),
+            "//patches:{}/0004-zlib-macos-test.patch".format(major),
+        ] if major in ("16", "18") else []),
         patch_cmds = ["find deps tools -type f \\( -name BUILD -o -name BUILD.bazel \\) -delete"],
     )
     for major, (version, sha256) in NODE_SOURCES.items()

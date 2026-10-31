@@ -1,0 +1,24 @@
+diff --git a/deps/v8/third_party/zlib/zutil.h b/deps/v8/third_party/zlib/zutil.h
+--- a/deps/v8/third_party/zlib/zutil.h
++++ b/deps/v8/third_party/zlib/zutil.h
+@@ -145,7 +145,7 @@
+ #  endif
+ #endif
+ 
+-#if defined(MACOS) || defined(TARGET_OS_MAC)
++#if defined(MACOS)
+ #  define OS_CODE  7
+ #  ifndef Z_SOLO
+ #    if defined(__MWERKS__) && __dest_os != __be_os && __dest_os != __win32_os
+diff --git a/deps/zlib/zutil.h b/deps/zlib/zutil.h
+--- a/deps/zlib/zutil.h
++++ b/deps/zlib/zutil.h
+@@ -145,7 +145,7 @@
+ #  endif
+ #endif
+ 
+-#if defined(MACOS) || defined(TARGET_OS_MAC)
++#if defined(MACOS)
+ #  define OS_CODE  7
+ #  ifndef Z_SOLO
+ #    if defined(__MWERKS__) && __dest_os != __be_os && __dest_os != __win32_os
