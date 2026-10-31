@@ -130,7 +130,7 @@ def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, ol
     libcxx, libcxxabi = libcxx_paths(llvm, args.os)
     link_flags = ["-nostdlib++", libcxx, libcxxabi]
     if args.os == "darwin":
-        # A static libc++ with chained fixups crashes at startup on Darwin 27.
+        # A static libc++ with chained fixups crashes at startup on Darwin 27. See docs/HERMETICITY.md.
         link_flags += ["-Wl,-no_fixup_chains"]
     else:
         link_flags += ["-lpthread", "-ldl", "-lm"]

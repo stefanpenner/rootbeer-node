@@ -124,7 +124,7 @@ The build is not fully hermetic. `docs/HERMETICITY.md` gives the rung of each in
 - The macOS POSIX tools come from the host. The result does not record their versions.
 - The Bazel sandboxes do not hide host read paths.
 - No test compares two builds, so byte-for-byte reproducibility is not proven.
-- `-Wl,-no_fixup_chains` is required on macOS. I did not find the root cause of the crash without it.
+- `-Wl,-no_fixup_chains` is required on macOS. The cause is in `docs/HERMETICITY.md`: dyld 27 leaves the chained weak-def-coalesce binds of a static libc++ null. A two-line iostream program shows it, and Apple's `ld` shows it too.
 
 ### eMudhra hosts
 

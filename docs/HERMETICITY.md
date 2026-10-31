@@ -97,8 +97,20 @@ The measured floor of the current builds is glibc 2.25.
 ## Known limits
 
 - `-Wl,-no_fixup_chains` is required on macOS.
-  A binary with static libc++ and chained fixups crashed at startup with exit code 139 on Darwin 27.
-  I did not find the root cause. This is an observation and not an explanation.
+  A binary with static libc++ and chained fixups crashes at startup with exit code 139 on Darwin 27.
+  This program is enough to show it, with no Node code:
+  `#include <iostream>` and `int main() { std::cout << 1; }`,
+  compiled with the pinned clang and `-nostdlib++`, and linked with the pinned `libc++.a` and `libc++abi.a`.
+  - The crash is a call through a null pointer in `std::__1::__stdinbuf<char>::imbue`, from `DoIOSInit`.
+  - `dyld_info -fixups` shows the vtable slots of the libc++ weak definitions as chained binds to
+    `<weak-def-coalesce>/<symbol>`. The symbols are in the export trie of the executable, flagged weak.
+    The binary has 687 such binds, and dyld 27 leaves these slots null.
+  - Apple's `ld` makes the same crashing binary, so the pinned lld is not the cause.
+  - `-Wl,-no_exported_symbols` removes the binds and the crash with chained fixups on, with `ld` and with lld.
+    It is not usable, because native add-ons resolve the Node and V8 symbols from the executable.
+  - `-Wl,-no_fixup_chains` keeps the classic weak-binding opcodes, and it works.
+  - Stock Node does not meet this, because it uses the libc++ of the system.
+  - I did not test other macOS versions. The flag is correct on all of them, and the cost is a larger relocation table.
 - The LLVM libc++.a objects target macOS 14.0, and the linker warns about this.
   The practical minimum for the macOS artifacts is macOS 14.
 - The build does not prove byte-for-byte reproducibility.
