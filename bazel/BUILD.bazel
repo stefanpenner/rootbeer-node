@@ -61,7 +61,7 @@ alias(
 filegroup(
     name = "sysroot_files",
     srcs = select({
-        ":macos_arm64": [],
+        ":macos_arm64": ["@macos_sdk//:files"],
         ":linux_x64": ["@linux_sysroot//:files"],
     }),
 )

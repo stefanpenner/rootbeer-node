@@ -10,8 +10,10 @@ import sys
 import unittest
 from pathlib import Path
 
-INFO = json.loads(Path(os.environ["SDK_INFO"]).read_text())
-FILES = [Path(item) for item in os.environ["SDK_FILES"].split()]
+# The file list is too long for an environment variable, so the test walks the runfiles.
+INFO_PATH = Path(os.environ["SDK_INFO"])
+INFO = json.loads(INFO_PATH.read_text())
+SDK_DIR = INFO_PATH.parent / "sdk"
 BAZEL_BUILD = Path(os.environ["BAZEL_BUILD"]).read_text()
 ON_MAC = sys.platform == "darwin"
 
@@ -28,15 +30,15 @@ class SdkInputs(unittest.TestCase):
 
     @unittest.skipUnless(ON_MAC, "the SDK repository is empty on Linux")
     def test_the_declared_files_are_the_sdk_of_info_json(self):
-        names = {str(path) for path in FILES}
-        self.assertGreater(len(FILES), 1000)
-        self.assertTrue(any(name.endswith("/sdk/SDKSettings.json") for name in names))
-        self.assertTrue(any(name.endswith("/sdk/usr/lib/libSystem.B.tbd") for name in names))
+        count = sum(len(names) for _, _, names in os.walk(SDK_DIR))
+        self.assertGreater(count, 1000)
+        self.assertTrue((SDK_DIR / "SDKSettings.json").is_file())
+        self.assertTrue((SDK_DIR / "usr/lib/libSystem.B.tbd").is_file())
 
     @unittest.skipUnless(ON_MAC, "the SDK repository is empty on Linux")
     def test_info_json_records_the_sdk_dir_and_the_declared_settings_match(self):
         self.assertEqual(INFO["sdk_dir"], "sdk")
-        settings = next(p for p in FILES if str(p).endswith("/sdk/SDKSettings.json"))
+        settings = SDK_DIR / "SDKSettings.json"
         self.assertEqual(json.loads(settings.read_text())["Version"], INFO["version"])
 
 

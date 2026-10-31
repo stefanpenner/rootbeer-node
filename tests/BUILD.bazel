@@ -63,7 +63,6 @@ py_test(
     ],
     env = {
         "BAZEL_BUILD": "$(rootpath //bazel:BUILD.bazel)",
-        "SDK_FILES": "$(rootpaths @macos_sdk//:files)",
         "SDK_INFO": "$(rootpath @macos_sdk//:info.json)",
     },
     size = "small",
