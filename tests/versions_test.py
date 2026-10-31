@@ -51,17 +51,26 @@ class Hub(unittest.TestCase):
 
 
 class Ci(unittest.TestCase):
+    @staticmethod
+    def matrix_lines(text):
+        match = re.search(r"^        node: \[(.*)\]$", text, re.MULTILINE)
+        return [item.strip() for item in match.group(1).split(",")] if match else None
+
     def test_matrix_covers_every_node_line(self):
-        jobs = build_jobs()
-        self.assertTrue(jobs)
-        for name, text in jobs.items():
-            match = re.search(r"^        node: \[(.*)\]$", text, re.MULTILINE)
-            self.assertIsNotNone(match, name)
-            self.assertEqual(
-                [item.strip() for item in match.group(1).split(",")],
-                sorted(MAJORS, key=int),
-                f"{name}: edit the node list in .github/workflows/ci.yml",
-            )
+        self.assertEqual(
+            self.matrix_lines(build_jobs()["build"]),
+            sorted(MAJORS, key=int),
+            "build: edit the node list in .github/workflows/ci.yml",
+        )
+
+    def test_pull_requests_build_the_oldest_and_newest_line_only(self):
+        # A full matrix costs 12 long jobs. The build job on main still builds every line.
+        ordered = sorted(MAJORS, key=int)
+        self.assertEqual(
+            self.matrix_lines(build_jobs()["build-pr"]),
+            [ordered[0], ordered[-1]],
+            "build-pr: edit the node list in .github/workflows/ci.yml",
+        )
 
     def test_source_tests_run_as_one_suite(self):
         # A line with its own target name in the workflow is easy to forget.

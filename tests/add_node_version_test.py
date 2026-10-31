@@ -56,10 +56,11 @@ class NewLine(unittest.TestCase):
     def test_adds_the_line_newest_first(self):
         self.assertEqual([m for m, _ in tags(self.module)], ["98"] + self.majors)
 
-    def test_extends_every_matrix(self):
-        ascending = ", ".join(sorted(self.majors, key=int))
-        self.assertEqual(self.workflow.count(f"node: [{ascending}, 98]"), 2)
-        self.assertNotIn(f"node: [{ascending}]", self.workflow)
+    def test_extends_the_full_matrix_and_the_pull_request_matrix(self):
+        ascending = sorted(self.majors, key=int)
+        main, pull_request = self.workflow.split("\n  build-pr:\n")
+        self.assertIn(f"node: [{', '.join(ascending)}, 98]", main)
+        self.assertIn(f"node: [{ascending[0]}, 98]", pull_request)
 
     def test_extends_the_readme(self):
         ascending = ", ".join(sorted(self.majors, key=int))

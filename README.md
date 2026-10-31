@@ -121,8 +121,9 @@ Builds are not proven reproducible.
 
 ## CI
 
-- Each run builds Node 16, 18, 20, 22, 24, and 26 on macOS 14 and Linux.
-  It runs the three tests, then uploads the archive.
+- A push to `main` or a manual run builds Node 16, 18, 20, 22, 24, and 26 on macOS 14 and Linux.
+  A pull request builds only the oldest and the newest line.
+  Each build job runs the three tests, then uploads the archive.
 - A pull request waits for the owner to approve it in the `pr-approval` environment.
 - A pull request never uses a self-hosted runner. `tests/ci_test.py` checks this.
 - A push to `main` uses the runner in the `CI_RUNS_ON` variable. Without it, GitHub hosts the job.
