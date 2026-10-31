@@ -72,7 +72,8 @@ The evidence for this claim is narrower:
 
 ## Linked libraries
 
-The macOS binary links these libraries only:
+The macOS binary links these libraries only. Some lines link fewer.
+For example, the Node 18 binary links only `libSystem.B.dylib` and CoreFoundation.
 
 - `libSystem.B.dylib`
 - `libobjc.A.dylib`, when a framework needs it
