@@ -69,6 +69,10 @@ node.version(
 
 use_repo(node, "node_versions")
 
+# The JDK source, the boot JDK, and the build tools. runtimes/jdk.json holds each pin.
+jdk = use_extension("//jdk:extension.bzl", "jdk")
+use_repo(jdk, "jdk_versions")
+
 # The stock certifi control. runtimes/certifi.json owns the version and the sha256.
 certifi_stock = use_repo_rule("//certifi:stock.bzl", "certifi_stock")
 
