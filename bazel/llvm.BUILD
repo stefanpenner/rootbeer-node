@@ -2,7 +2,14 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "bin/clang",
+    "bin/clang++",
+    "bin/llvm-ar",
     "bin/llvm-readobj",
+    "bin/llvm-strip",
+    "lib/libc++.a",
+    "lib/libc++abi.a",
+    "lib/x86_64-unknown-linux-gnu/libc++.a",
+    "lib/x86_64-unknown-linux-gnu/libc++abi.a",
 ])
 
 filegroup(

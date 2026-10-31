@@ -55,6 +55,9 @@ class ActionEnvironment(unittest.TestCase):
     def test_bazel_does_not_look_for_a_host_c_compiler(self):
         self.assertIn("common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1", settings())
 
+    def test_bazel_does_not_look_for_xcode(self):
+        self.assertIn("common --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1", settings())
+
 
 class RemoteExecution(unittest.TestCase):
     """`--config=remote-exec` must run the Linux build on a Linux executor. The endpoint is in ~/.bazelrc."""
