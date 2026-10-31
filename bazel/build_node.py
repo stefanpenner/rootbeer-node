@@ -118,6 +118,7 @@ def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, ol
     common = [
         f"-ffile-prefix-map={scratch}=.",
         f"-ffile-prefix-map={llvm}=llvm",
+        f"-ffile-prefix-map={sysroot}=/sysroot",
         "-Wno-unused-command-line-argument",
         "-fuse-ld=lld",
     ] + (OLD_V8_FLAGS if old_v8 else [])
