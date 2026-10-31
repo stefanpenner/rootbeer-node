@@ -52,7 +52,19 @@ Test times on macOS arm64:
 ## Artifacts
 
 The archives are in `./dist/` on the Mac. This directory is not in git.
-The checksums are in the versions table of `README.md`.
+These are the archive checksums. No test proves that a new build gives the same bytes.
+
+| File | sha256 |
+|---|---|
+| `node-v22.23.4-rootbeer-darwin-arm64.tar.gz` | `d1d1065deeebee799e0b964e4df38ea3325ded9ed0598eb9b0cdbe645037ac00` |
+| `node-v20.20.2-rootbeer-darwin-arm64.tar.gz` | `4d460020a487d033721fc6bdb5b82e67f8bf7eff8fb01950271f0fa34e98bbed` |
+| `node-v18.20.8-rootbeer-darwin-arm64.tar.gz` | `41c0f99b142fe6539f0c103bdce1f9b428a6f66dde7346521042b328a0511e85` |
+| `node-v16.20.2-rootbeer-darwin-arm64.tar.gz` | `b19d2acb290dabd2919ad49d5fa78a4824f8329cb45e4ef455b705034995fc49` |
+| `node-v22.23.4-rootbeer-linux-x64.tar.gz` | `9aa2f1301faa321423612eb3de7e7ba286f41de4dd89bd6b7a92be442a540d09` |
+| `node-v20.20.2-rootbeer-linux-x64.tar.gz` | `aeee2abed4f0aa36f0934d26b649edfb5ddab966393d3e4a748e28d1d9a0f62e` |
+| `node-v18.20.8-rootbeer-linux-x64.tar.gz` | `a755d921d4712b2f8037a5e7c0a933f8be1545a179c13ca6536e9f996054a127` |
+| `node-v16.20.2-rootbeer-linux-x64.tar.gz` | `3265d9334a8d1f4acc79e3dfdc883e7023efc20f4b0e9601dc7b7a46d699c4de` |
+
 The Linux 20, 18, and 16 archives came from the CI run. CI keeps them for a limited time.
 
 Each archive holds three files:
