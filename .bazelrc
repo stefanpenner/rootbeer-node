@@ -16,6 +16,8 @@ build --local_resources=cpu=10
 
 # The build uses the pinned toolchain only. Do not look for a host C++ compiler.
 common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+# apple_support detects Xcode by itself and reads this other variable.
+common --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1
 # The default Python bootstrap needs python3 on the host PATH.
 build --@rules_python//python/config_settings:bootstrap_impl=script
 
@@ -33,5 +35,18 @@ build:remote-exec --spawn_strategy=remote
 build:remote-exec --noremote_local_fallback
 build:remote-exec --remote_timeout=3h
 build:remote-exec --remote_download_toplevel
+
+# Opt-in: a pinned macOS SDK from a private tarball. No build needs this config.
+# The Apple license does not allow a public copy. Never publish the tarball.
+# Put the address and the checksum in ~/.bazelrc, not in this file. tools/pack_macos_sdk.py prints them:
+#   common:pinned-sdk --repo_env=ROOTBEER_PINNED_SDK_URL=file:///PRIVATE/PATH/MacOSX.sdk.tar.gz
+#   common:pinned-sdk --repo_env=ROOTBEER_PINNED_SDK_SHA256=HEX
+# The SDK files are action inputs, so this config turns off each service that can receive them.
+# Put --config=pinned-sdk last. A later flag can turn a service on again.
+common:pinned-sdk --repo_env=ROOTBEER_PINNED_SDK=1
+build:pinned-sdk --remote_executor=
+build:pinned-sdk --remote_cache=
+build:pinned-sdk --bes_backend=
+build:pinned-sdk --experimental_remote_downloader=
 
 try-import %workspace%/user.bazelrc

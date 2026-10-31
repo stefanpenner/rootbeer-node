@@ -5,7 +5,7 @@ Usage: add_node_version.py <X.Y.Z> [--old-v8] [--shasums FILE] [--no-patches]
 
 It edits these files:
   MODULE.bazel                one node.version tag, replacing the tag of the same line
-  .github/workflows/ci.yml    the node lists of the build matrices, for a new line
+  runtimes/node.json          the entry of the line. The CI matrix comes from this file.
   README.md                   the version table and the prose that lists the lines
   STATUS.md                   the row of the line in the Result table
 
@@ -16,6 +16,7 @@ the line needs a new family. See docs/ADDING_A_VERSION.md.
 """
 
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -68,12 +69,24 @@ def prose(majors):
     return ", ".join(ordered[:-1]) + ", and " + ordered[-1]
 
 
-def set_matrix(text, lines):
-    return re.sub(r"^        node: \[.*\]$", "        node: [%s]" % ", ".join(lines), text, flags=re.MULTILINE)
+def set_manifest(text, major, version, sha256):
+    """Replaces or adds the entry of the line. The lines stay newest first."""
+    manifest = json.loads(text)
+    entry = {
+        "line": major,
+        "version": version,
+        "sha256": sha256,
+        "target": f"//node:dist_{major}",
+        "test": f"//tests:node_{major}_tests",
+        "artifact": f"bazel-bin/node/node-v{version}-rootbeer-*.tar.gz*",
+    }
+    others = [v for v in manifest["versions"] if v["line"] != major]
+    manifest["versions"] = sorted(others + [entry], key=lambda v: int(v["line"]), reverse=True)
+    return json.dumps(manifest, indent=2) + "\n"
 
 
-def update(module, workflow, readme, version, shasums, old_v8):
-    """Returns the new text of MODULE.bazel, ci.yml, and README.md."""
+def update(module, manifest, readme, version, shasums, old_v8):
+    """Returns the new text of MODULE.bazel, runtimes/node.json, and README.md."""
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         die(f"{version!r} is not X.Y.Z")
     major = version.split(".")[0]
@@ -101,15 +114,9 @@ def update(module, workflow, readme, version, shasums, old_v8):
             at = module.index("use_repo(node,")
             module = module[:at].rstrip("\n") + "\n\n" + tag + "\n" + module[at:]
 
-    main_jobs, pull_request_job = workflow.split("\n  build-pr:\n")
+    manifest = set_manifest(manifest, major, version, digests["sha256"])
     majors = re.findall(r'^node\.version\(\n    major = "(\d+)"', module, re.MULTILINE)
     text = prose(majors)
-
-    ordered = sorted(majors, key=int)
-    workflow = "\n  build-pr:\n".join((
-        set_matrix(main_jobs, ordered),
-        set_matrix(pull_request_job, [ordered[0], ordered[-1]]),
-    ))
 
     readme = re.sub(r"Node\.js [0-9, and]+ with no bundled root certificates",
                     f"Node.js {text} with no bundled root certificates", readme)
@@ -127,7 +134,7 @@ def update(module, workflow, readme, version, shasums, old_v8):
         else:
             at = rows[-1].end()
             readme = readme[:at] + "\n" + row + readme[at:]
-    return module, workflow, readme
+    return module, manifest, readme
 
 
 def update_status(status, version):
@@ -187,7 +194,7 @@ def main(argv):
             shasums = stream.read()
     else:
         shasums = fetch(DIST.format(version) + "SHASUMS256.txt").decode()
-    paths = [os.path.join(ROOT, p) for p in ("MODULE.bazel", ".github/workflows/ci.yml", "README.md", "STATUS.md")]
+    paths = [os.path.join(ROOT, p) for p in ("MODULE.bazel", "runtimes/node.json", "README.md", "STATUS.md")]
     old = [open(p, encoding="utf-8").read() for p in paths]
     new = [*update(*old[:3], version, shasums, old_v8="--old-v8" in flags), update_status(old[3], version)]
     for path, text in zip(paths, new):
@@ -204,8 +211,8 @@ def main(argv):
             for path, text in zip(paths, old):
                 with open(path, "w", encoding="utf-8") as stream:
                     stream.write(text)
-            die(f"no patches for Node {major}. MODULE.bazel, ci.yml, README.md and STATUS.md are restored.")
-    print(f"Updated MODULE.bazel, ci.yml, README.md and STATUS.md for Node {version}.")
+            die(f"no patches for Node {major}. MODULE.bazel, node.json, README.md and STATUS.md are restored.")
+    print(f"Updated MODULE.bazel, node.json, README.md and STATUS.md for Node {version}.")
     print(f"Next: bazel test //tests:source_{major}_test //tests:versions_test, then")
     print(f"  bazel build //node:rootbeer_{major} && bazel test //tests:hermetic_{major}_test //tests:network_{major}_test")
 

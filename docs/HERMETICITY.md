@@ -20,14 +20,16 @@ Each input has a rung. A lower rung is stronger.
 |---|---|---|
 | Node source, each line in `MODULE.bazel` | nodejs.org, checksum from `SHASUMS256.txt` | 0 |
 | Stock Node controls | nodejs.org, checksum from `SHASUMS256.txt` | 0 |
-| rootbeer-node patches | This repository | 0 |
+| rootbeerz patches | This repository | 0 |
 | Clang, lld, libc++ 19.1.7 | LLVM GitHub release | 1 |
+| C++ toolchain configuration | `bazel/cc/`, this repository | 0 |
 | Ninja | Ninja GitHub release | 1 |
 | Python | `rules_python` toolchain, pinned by the module | 0 |
 | Linux sysroot (glibc 2.31, GCC 10 runtime) | Chromium sysroot bucket | 1 |
 | Test CA bundle | `trust/`, derived from curl `cacert.pem` | 0 |
 | Tool wrappers | `bazel/build_node.py` | 2 |
 | macOS SDK | Host, declared as inputs by content | 6 |
+| macOS SDK with `--config=pinned-sdk` (opt-in) | Private tarball, sha256 from the user. Never published. | 1 |
 | Linux image: Bazel 9.1.1 | GitHub release, sha256 in `docker/Dockerfile` | 0 |
 | Linux image: BusyBox, bash, dash, glibc, libstdc++, zlib, zstd, xz, libxml2, ICU | `snapshot.debian.org` `.deb` files, sha256 in `docker/Dockerfile` | 0 |
 | Linux image: unpack stage | `debian:bookworm-slim`, pinned by digest. It runs `dpkg-deb` and `ln` only. | 0 |
@@ -60,6 +62,43 @@ Set `ROOTBEER_MACOS_SDK` to select a different SDK.
 `ld64.lld` 19 cannot read a `.tbd` file that lists `arm64e.x1`.
 `bazel/sdk.bzl` skips an SDK with this architecture.
 A host that has only such an SDK fails with a clear message.
+
+### Optional pinned macOS SDK
+
+`--config=pinned-sdk` selects an SDK from a private tarball. The default stays the host SDK.
+No build needs this config. The Mac and the macOS CI runner do not use it.
+
+The Apple license does not allow a public copy of the SDK. Follow these rules:
+
+- Never commit the tarball.
+- Never upload the tarball.
+- Never add the tarball to an artifact, a shared cache, or a public URL.
+- Do not use this config with a remote service. The SDK files are action inputs, so a remote executor receives them.
+
+The config turns off the remote executor, the remote cache, the event service, and the remote downloader.
+Put `--config=pinned-sdk` last on the command line, because a later flag can turn a service on again.
+Bazel keeps a copy of the tarball in the local repository cache, and the extracted files in the output base.
+Do not share these directories, and do not share a `--disk_cache` directory that this config used.
+
+To make and use a tarball:
+
+1. Run `python3 tools/pack_macos_sdk.py --out ~/private/MacOSX.sdk.tar.gz`. Use `--sdk PATH` to select an SDK from Xcode or Command Line Tools.
+2. Add the two printed `common:pinned-sdk` lines to `~/.bazelrc`.
+3. Run `bazel build --config=pinned-sdk //node:rootbeer_22`.
+
+The helper refuses an output path in a git work tree, and it writes the file with mode 0600.
+The tarball must hold exactly one `*.sdk` directory. The repository rule refuses a wrong checksum, a missing tarball, and an SDK that `ld64.lld` cannot read.
+With the config off, the rule ignores the address and the checksum.
+
+With the config on, the SDK is rung 1, and `info.json` records `"source": "pinned"` and the tarball checksum.
+The action reads the declared `sdk/` files, not a host path.
+`info.json` goes into the published `BUILDINFO.json`, so it never records the address.
+The POSIX tools below still come from the host, so this config does not make the macOS build fully hermetic.
+The compiler is the pinned LLVM in both modes.
+
+CI may use this config only if the private tarball is available to a private runner.
+The repository has no such secret, and CI leaves the config off.
+A job that turns it on must not save a Bazel cache to the Actions cache, and it must not upload the tarball as an artifact.
 
 ### POSIX tools
 
@@ -134,6 +173,8 @@ The measured floor of the current builds is glibc 2.25.
 | `build --incompatible_strict_action_env` | An action sees a fixed `PATH`, not the `PATH` of the user. `node_build` also sets `use_default_shell_env = False`. |
 | `build --sandbox_default_allow_network=false` | An action cannot use the network. The default sandbox allows it. A probe action reaches a host without the flag and fails with it. The network tests carry `requires-network`, so they keep their access. |
 | `common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1` | The build does not look for a host C++ compiler. |
+| `common --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1` | `apple_support` does not look for Xcode. It ignores the setting above. |
+| `register_toolchains("//bazel/cc:all")` in `MODULE.bazel` | Each C++ action uses the pinned LLVM. `//tests:cc_toolchain_test` fails if a host compiler returns. On macOS the SDK stays a host input (rung 6). |
 
 Every `http_archive` has a `sha256`. No repository rule downloads without a checksum, and no source comes from a Git ref.
 
@@ -188,15 +229,20 @@ What a real run shows, on a Buildbarn runner with a cap of 6 CPUs and 8 GiB:
 | The same build, 5 jobs | Fail. The scheduler stopped the action after 1810 s. Peak memory 5.7 GiB. |
 | `bazel build --config=remote-exec //node:rootbeer_22` | Pass. 1378 s. |
 | `bazel build --config=remote-exec //node:rootbeer_24` | Pass. 1648 s. 152 s under the limit. |
-| Node 18 and 20 | Not run. |
+| `bazel test --config=remote-exec //tests:cc_toolchain_test` | Pass. |
+| `bazel test --config=remote-exec //tests:hermetic_16_test`, 6 jobs | Pass. New build, 629 s. |
+| `bazel test --config=remote-exec //tests:hermetic_18_test`, 6 jobs | Pass. New build, 711 s. |
+| `bazel test --config=remote-exec //tests:hermetic_26_test`, 6 jobs | Pass. Remote cache hit for the build, 13 s. |
+| Hermetic tests for Node 20, 22, and 24 | Not run. |
+| Node 20 build | Not run. |
 
-The Node 16, 22, and 24 rows used 5 jobs. The job count is in the action key, so these lines now need a new build. Their times with 6 jobs are not measured.
+The `//node:rootbeer_16`, 22, and 24 rows used 5 jobs. The job count is in the action key, so Node 22 and 24 now need a new build. Their times with 6 jobs are not measured.
 
 Limits:
 
-- `bazel test --config=remote-exec` fails in analysis. `@bazel_tools//third_party/ijar` asks for a C++ toolchain, and none is registered.
-  So the hermetic and network tests do not run remotely. A smoke test of the Node 16, 22, 24, and 26 binaries in a capped container passed.
-  That smoke test is not the hermetic test.
+- `bazel/cc/` registers the pinned LLVM and the Linux sysroot as the C++ toolchain, so `bazel test --config=remote-exec` passes analysis.
+- The macOS SDK stays a host input through `bazel/sdk.bzl` (rung 6). The macOS toolchain has this one host input.
+- apple_support detects Xcode and ignores `BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN`. `.bazelrc` also sets `BAZEL_NO_APPLE_CPP_TOOLCHAIN=1`.
 - The scheduler limit is the real limit, not memory. The SER9 scheduler stops an action at 1800 s by default.
   - The Bazel flag `--remote_timeout` does not change this limit.
   - A rule cannot change it. Bazel 9.1.1 removes the `timeout` key from `execution_requirements` (`TargetUtils.legalExecInfoKeys`).
