@@ -10,21 +10,25 @@ import unittest
 import build_jdk
 
 
-def jks(count):
-    return struct.pack(">III", 0xFEEDFEED, 2, count) + b"digest"
+# Bytes from the JDK 25.0.5 build. keytool reads this file as a PKCS12 store with 0 entries.
+EMPTY_PKCS12 = bytes.fromhex("30160201033011" "06092a864886f70d010701" "a00404023000")
 
 
 class Cacerts(unittest.TestCase):
     def test_empty_keystore_passes(self):
-        build_jdk.require_empty_cacerts(jks(0))
+        build_jdk.require_empty_cacerts(EMPTY_PKCS12)
 
-    def test_keystore_with_an_entry_fails(self):
+    def test_keystore_with_more_bytes_fails(self):
         with self.assertRaises(SystemExit):
-            build_jdk.require_empty_cacerts(jks(1))
+            build_jdk.require_empty_cacerts(EMPTY_PKCS12 + b"\0")
+
+    def test_empty_file_fails(self):
+        with self.assertRaises(SystemExit):
+            build_jdk.require_empty_cacerts(b"")
 
     def test_file_of_another_type_fails(self):
         with self.assertRaises(SystemExit):
-            build_jdk.require_empty_cacerts(b"\x30\x82" + b"\0" * 20)
+            build_jdk.require_empty_cacerts(struct.pack(">III", 0xFEEDFEED, 2, 0))
 
 
 class Configure(unittest.TestCase):

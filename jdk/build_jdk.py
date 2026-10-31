@@ -16,14 +16,15 @@ import json
 import os
 import shutil
 import stat
-import struct
 import subprocess
 import sys
 import tarfile
 
 # The host POSIX tools, codesign, and the Xcode tools. docs/JDK.md states why.
 BASE_PATH = "/usr/bin:/bin:/usr/sbin"
-JKS_MAGIC = 0xFEEDFEED
+# GenerateCacerts writes this exact PKCS12 store when the source directory is empty.
+# The store has no entry, no salt, and no MAC, so the bytes are the same in each build.
+EMPTY_PKCS12 = bytes.fromhex("30160201033011" "06092a864886f70d010701" "a00404023000")
 SOURCE_EPOCH = 0
 
 
@@ -45,14 +46,9 @@ def parse_args():
 
 
 def require_empty_cacerts(data):
-    """Stops the build unless the bytes are a JKS keystore with no entry."""
-    if len(data) < 12:
-        sys.exit("cacerts: the file is too short to be a keystore")
-    magic, _version, count = struct.unpack(">III", data[:12])
-    if magic != JKS_MAGIC:
-        sys.exit(f"cacerts: the file is not a JKS keystore: magic {magic:#x}")
-    if count != 0:
-        sys.exit(f"cacerts: the keystore holds {count} entries, and the build requires 0")
+    """Stops the build unless the bytes are the PKCS12 store with no entry."""
+    if data != EMPTY_PKCS12:
+        sys.exit(f"cacerts: the file is not the empty PKCS12 store: {len(data)} bytes, {data[:16].hex()}")
 
 
 def configure_flags(boot_jdk, sysroot, empty_cacerts, jobs, version, scratch, llvm):
@@ -103,15 +99,14 @@ def run(command, cwd, env):
     subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
-def unpack(archive, tree, env, exclude=()):
+def unpack(archive, tree, env):
     """Unpacks one source archive into a new directory. A kept scratch keeps the old result."""
     if os.path.isdir(tree):
         return
     temp = tree + ".unpacking"
     shutil.rmtree(temp, ignore_errors=True)
     os.makedirs(temp)
-    excludes = [f"--exclude={item}" for item in exclude]
-    run(["/usr/bin/tar", "-xf", archive, "--strip-components=1", *excludes, "-C", temp], "/", env)
+    run(["/usr/bin/tar", "-xf", archive, "--strip-components=1", "-C", temp], "/", env)
     os.rename(temp, tree)
 
 
@@ -270,8 +265,7 @@ def main():
     boot = copy_boot_jdk(args.boot_java, scratch)
     write_metal_shims(wrap_bin, boot)
     tree = os.path.join(scratch, "src", "jdk")
-    # The test tree is 358 MB, and the images target does not read it.
-    unpack(os.path.abspath(args.source), tree, env, exclude=["*/test/*"])
+    unpack(os.path.abspath(args.source), tree, env)
 
     empty = os.path.join(scratch, "empty-cacerts")
     os.makedirs(empty, exist_ok=True)
