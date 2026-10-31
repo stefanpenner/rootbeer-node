@@ -13,6 +13,12 @@ py_library(
         "trustlib.py",
     ],
     imports = ["."],
+    visibility = ["//tests:__subpackages__"],
+)
+
+exports_files(
+    glob(["fixtures/*"]),
+    visibility = ["//tests:__subpackages__"],
 )
 
 [rootbeer_tests(major, version) for major, version in NODE_VERSIONS.items()]

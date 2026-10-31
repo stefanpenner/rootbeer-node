@@ -69,6 +69,11 @@ node.version(
 
 use_repo(node, "node_versions")
 
+# The stock certifi control. runtimes/certifi.json owns the version and the sha256.
+certifi_stock = use_repo_rule("//certifi:stock.bzl", "certifi_stock")
+
+certifi_stock(name = "certifi_stock")
+
 # The hermetic toolchain. docs/HERMETICITY.md gives the rung of each input.
 # These toolchains take priority over a toolchain that a dependency registers.
 register_toolchains("//bazel/cc:all")

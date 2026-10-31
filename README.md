@@ -138,6 +138,36 @@ Node 16 on macOS did not. [docs/HERMETICITY.md](docs/HERMETICITY.md#reproducibil
 - A push to `main` uses the runner in the `CI_RUNS_ON` variable. Without it, GitHub hosts the job.
 - Bazel is pinned and checked by sha256. Each action has a commit SHA.
 
+## Python certifi and other runtimes
+
+`//certifi:rootbeerz_certifi` builds a wheel named `certifi`. It replaces stock certifi and holds no certificate.
+It has the same `where()`, `contents()`, and `__version__`.
+
+`where()` returns the first file that it finds:
+
+1. The file in `SSL_CERT_FILE`.
+2. The default file from `ssl.get_default_verify_paths()`.
+3. A known OS file. `certifi/src/certifi/core.py` lists these files.
+
+If it finds no file, `where()` raises `FileNotFoundError`. A missing `SSL_CERT_FILE` file also raises it.
+
+Limits of the wheel:
+
+- The API returns one file. It cannot use a store that is only a directory, a keychain, or the Windows store.
+- `requests` calls `where()` when it loads. With no store, the import of `requests` fails.
+- pip has its own copy of certifi. This wheel does not change pip.
+
+Go, Ruby, and .NET use the system store by default. Rust and PHP depend on the crate or the library.
+This table comes from upstream docs. This project did not test these runtimes.
+
+| Runtime | Default | Exceptions |
+| --- | --- | --- |
+| Go | [`crypto/x509`](https://pkg.go.dev/crypto/x509) uses the system roots or the platform verifier if `Roots` is nil. | A program can set `Roots`. [`x509roots/fallback`](https://pkg.go.dev/golang.org/x/crypto/x509roots/fallback) embeds roots for use if no system store exists. |
+| Ruby | [`Store#set_default_paths`](https://docs.ruby-lang.org/en/master/OpenSSL/X509/Store.html) uses the system certificates. | [RubyInstaller](https://github.com/oneclick/rubyinstaller2/blob/master/resources/ssl/README-SSL.md) on Windows ships a CA list from Mozilla. |
+| Rust | There is no default. The TLS crate decides. [`rustls-native-certs`](https://docs.rs/rustls-native-certs) reads the platform store. [`native-tls`](https://docs.rs/native-tls) uses the platform TLS library. | [`webpki-roots`](https://docs.rs/webpki-roots) is a compiled-in copy of the Mozilla roots. `rustls` with this crate does not use the system store. |
+| PHP | [`openssl.cafile`](https://www.php.net/manual/en/openssl.configuration.php) and [`curl.cainfo`](https://www.php.net/manual/en/curl.configuration.php) are empty by default. These pages do not state the fallback. We expect the OpenSSL and libcurl defaults to apply, and we did not confirm this. | [`composer/ca-bundle`](https://github.com/composer/ca-bundle) can fall back to a bundled file. |
+| .NET | [OS libraries](https://learn.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography) supply the roots: the Windows store, `SecTrustSettings` on macOS, and OpenSSL paths on Linux. | A program can set [`CustomTrustStore`](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509chainpolicy.customtruststore). |
+
 ## Known gaps
 
 - Not fully hermetic. On macOS, the SDK and POSIX tools come from the host.
