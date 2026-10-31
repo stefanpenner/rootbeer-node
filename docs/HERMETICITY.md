@@ -90,7 +90,9 @@ The Linux binary links glibc libraries and `libgcc_s` only.
 These libraries come from the host at run time.
 Node passes `-latomic` to the linker on Linux with Clang.
 `MODULE.bazel` removes `libatomic.so` from the sysroot, so the linker selects `libatomic.a`.
-The sysroot sets the glibc floor at version 2.31.
+The sysroot ships glibc 2.31, so the binary cannot import a newer symbol.
+`GlibcFloor` in `tests/hermetic_test.py` fails when any imported symbol needs glibc newer than 2.31.
+The measured floor of the current builds is glibc 2.25.
 
 ## Known limits
 

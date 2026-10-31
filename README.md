@@ -42,7 +42,7 @@ The binary holds no root certificates. All trust comes from the host.
 ## Platforms
 
 - **macOS arm64 (macOS 14 or later):** All four lines build and pass the tests.
-- **Linux x86_64:** All four lines build and pass the tests. The binary needs glibc 2.31 or later.
+- **Linux x86_64:** All four lines build and pass the tests. The binary needs glibc 2.25 or later, and a test fails if that rises above 2.31.
 
 ## Layout
 

@@ -4,6 +4,7 @@ import crypto_bundle
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -25,6 +26,12 @@ ALLOWED_LIBRARIES = re.compile(
     r"|/System/Library/Frameworks/[^ ]+"
     r"|(ld-linux-x86-64|libc|libdl|libgcc_s|libm|libpthread|librt)\.so\.[0-9]+)$"
 )
+
+# The first body line of any DER certificate starts with MII in base64. The marker does not
+# come from the stock binary, so a root that stock never shipped is found too.
+PEM_CERTIFICATE = re.compile(rb"-----BEGIN CERTIFICATE-----\r?\nMI[A-Za-z0-9+/]")
+# The oldest glibc that the Linux sysroot ships, and the floor that the README states.
+GLIBC_FLOOR = (2, 31)
 
 ROOT_COUNT = "require('tls').rootCertificates.length"
 BUNDLED_FLAG = "--use-bundled-ca"
@@ -123,6 +130,22 @@ class BinaryScan(unittest.TestCase):
     def test_rootbeer_binary_holds_no_marker(self):
         self.assertEqual(self.scan(ROOTBEER), [])
 
+    def test_stock_binary_holds_pem_certificates(self):
+        # The control. The generic scan must be able to find the bundled roots.
+        with open(STOCK, "rb") as binary:
+            self.assertGreater(len(PEM_CERTIFICATE.findall(binary.read())), 100)
+
+    def test_rootbeer_binary_holds_no_pem_certificate(self):
+        with open(ROOTBEER, "rb") as binary:
+            self.assertEqual(PEM_CERTIFICATE.findall(binary.read()), [])
+
+    def test_default_openssl_dir_is_etc_ssl(self):
+        # OPENSSLDIR names the default store. macOS Node points it at /System/Library/OpenSSL.
+        with open(ROOTBEER, "rb") as binary:
+            data = binary.read()
+        self.assertIn(b'OPENSSLDIR: "/etc/ssl"', data)
+        self.assertNotIn(b"/System/Library/OpenSSL", data)
+
 
 class LinkCheck(unittest.TestCase):
     """The binary must not load a C++ library or any other library from the host toolchain."""
@@ -136,6 +159,20 @@ class LinkCheck(unittest.TestCase):
         self.assertTrue(libraries, output)
         unexpected = [name for name in libraries if not ALLOWED_LIBRARIES.match(name)]
         self.assertEqual(unexpected, [])
+
+
+@unittest.skipUnless(sys.platform.startswith("linux"), "glibc symbols exist on Linux only")
+class GlibcFloor(unittest.TestCase):
+    def test_binary_needs_no_newer_glibc_than_the_documented_floor(self):
+        output = subprocess.run(
+            [READOBJ, "--dyn-syms", ROOTBEER], capture_output=True, text=True, check=True
+        ).stdout
+        versions = {
+            tuple(int(part) for part in match.groups())
+            for match in re.finditer(r"@GLIBC_(\d+)\.(\d+)", output)
+        }
+        self.assertTrue(versions, output[:2000])
+        self.assertLessEqual(max(versions), GLIBC_FLOOR)
 
 
 class LocalStoreOnly(unittest.TestCase):
