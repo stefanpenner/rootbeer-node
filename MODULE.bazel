@@ -145,10 +145,14 @@ http_archive(
 )
 
 # Chromium publishes this Debian bullseye sysroot by content revision.
+# Node's -latomic must select libatomic.a, so the binary does not need libatomic.so.1 from the host.
 http_archive(
     name = "linux_sysroot",
     build_file = "//bazel:linux_sysroot.BUILD",
-    patch_cmds = ["printf '{\"path\": \".\", \"version\": \"debian-bullseye-amd64\", \"settings_sha256\": \"5df5be9357b425cdd70d92d4697d07e7d55d7a923f037c22dc80a78e85842d2c\"}\\n' > info.json"],
+    patch_cmds = [
+        "printf '{\"path\": \".\", \"version\": \"debian-bullseye-amd64\", \"settings_sha256\": \"5df5be9357b425cdd70d92d4697d07e7d55d7a923f037c22dc80a78e85842d2c\"}\\n' > info.json",
+        "rm usr/lib/gcc/x86_64-linux-gnu/10/libatomic.so",
+    ],
     sha256 = "5df5be9357b425cdd70d92d4697d07e7d55d7a923f037c22dc80a78e85842d2c",
     urls = ["https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/4f611ec025be98214164d4bf9fbe8843f58533f7/debian_bullseye_amd64_sysroot.tar.xz"],
 )
