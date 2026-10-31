@@ -47,6 +47,19 @@ class Compare(unittest.TestCase):
         self.assertEqual(result.only_a, [])
 
 
+    def test_random_bytes_are_not_reported_as_strings(self):
+        # Compressed data and tables hold runs of printable bytes by chance. They are noise.
+        a = b"\x00" + b"!,[TvB\"Od_d;l#kw?3<6 ,4" + b"\x00" + b"x" * 40
+        b = b"\x00" + b"'IjGr )axrd QAHhCyS:<" + b"\x00" + b"x" * 40
+        result = repro_check.compare(a, b)
+        self.assertEqual(result.only_a, [])
+        self.assertEqual(result.only_b, [])
+
+    def test_the_number_of_differing_bytes_is_counted(self):
+        result = repro_check.compare(b"a" * 100, b"a" * 98 + b"bb")
+        self.assertEqual(result.differing_bytes, 2)
+
+
 class Archives(unittest.TestCase):
     def test_node_is_read_from_the_archive(self):
         with tempfile.TemporaryDirectory() as directory:
