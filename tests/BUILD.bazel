@@ -61,6 +61,20 @@ py_test(
 )
 
 py_test(
+    name = "repo_rules_test",
+    srcs = ["repo_rules_test.py"],
+    data = [
+        "//:MODULE.bazel",
+        "//bazel:node_versions.bzl",
+        "//bazel:sdk.bzl",
+    ],
+    env = {
+        "FILES": "module=$(rootpath //:MODULE.bazel) node_versions=$(rootpath //bazel:node_versions.bzl) sdk=$(rootpath //bazel:sdk.bzl)",
+    },
+    size = "small",
+)
+
+py_test(
     name = "docker_test",
     srcs = ["docker_test.py"],
     data = [
