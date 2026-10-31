@@ -71,6 +71,17 @@ class RemoteExecution(unittest.TestCase):
         self.assertIn("build:remote-exec --spawn_strategy=remote", settings())
         self.assertIn("build:remote-exec --noremote_local_fallback", settings())
 
+    def test_big_config_selects_the_big_platform(self):
+        for flag in ("platforms", "host_platform", "extra_execution_platforms"):
+            self.assertIn(f"build:remote-exec-big --{flag}=//platforms:linux_x64_big", settings())
+        self.assertIn("build:remote-exec-big --config=remote-exec", settings())
+
+    def test_big_platform_has_its_own_queue(self):
+        # The scheduler makes one queue for each exact property set.
+        big = PLATFORMS.split('name = "linux_x64_big"')[1]
+        self.assertIn('"pool": "big"', big)
+        self.assertIn('"OSFamily": "linux"', big)
+
     def test_platform_is_linux_x86_64_with_exec_properties(self):
         self.assertIn("@platforms//os:linux", PLATFORMS)
         self.assertIn("@platforms//cpu:x86_64", PLATFORMS)
