@@ -3,6 +3,11 @@ load("@rules_python//python:py_test.bzl", "py_test")
 load("@node_versions//:versions.bzl", "NODE_VERSIONS")
 load(":defs.bzl", "rootbeer_tests")
 
+exports_files(
+    glob(["fixtures/*"]),
+    visibility = ["//tests/jdk:__pkg__"],
+)
+
 py_library(
     name = "trustlib",
     srcs = [

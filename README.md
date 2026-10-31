@@ -73,6 +73,11 @@ Node 26 has no Temporal API here, because the build declares no Rust toolchain. 
 To add a version, run `python3 tools/add_node_version.py <version>`.
 See [docs/ADDING_A_VERSION.md](docs/ADDING_A_VERSION.md).
 
+## JDK
+
+The JDK line 25 build has an empty `cacerts`. See [docs/JDK.md](docs/JDK.md).
+Java does not read `SSL_CERT_FILE`. Give the JVM a trust store with a system property.
+
 ## How it works
 
 1. Bazel builds Node from pinned source with a pinned toolchain.
