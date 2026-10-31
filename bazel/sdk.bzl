@@ -1,10 +1,18 @@
-"""Finds the macOS SDK on the host. The SDK license does not allow a pinned copy.
+"""Finds the macOS SDK. The SDK license does not allow a public copy.
 
-The SDK is a host input. The repository records its path, version, and settings
-digest in info.json. The repository also links the SDK directory as `sdk/`, and
-`:files` lists every file in it. The Node build declares these files as inputs,
+Never publish an SDK tarball. Do not commit it, upload it, or add it to an artifact,
+a shared cache, or a public URL.
+
+The default SDK is a host input. The repository records its path, version, and
+settings digest in info.json. The repository also links the SDK directory as `sdk/`,
+and `:files` lists every file in it. The Node build declares these files as inputs,
 so a change to any SDK file makes a new cache key. docs/HERMETICITY.md describes
 the remaining gap: the action still reads the SDK at its host path.
+
+`--config=pinned-sdk` sets ROOTBEER_PINNED_SDK=1. The repository then fetches a private
+tarball from ROOTBEER_PINNED_SDK_URL and checks it against ROOTBEER_PINNED_SDK_SHA256.
+The user supplies both values. The action reads the declared `sdk/` files. info.json
+goes into the published BUILDINFO.json, so it never records the address.
 """
 
 _SDK_ROOTS = [
@@ -83,9 +91,49 @@ def _sha256(rctx, path):
         fail("Cannot hash %s: %s" % (path, result.stderr))
     return result.stdout.split(" ")[0]
 
+def _pinned_address(rctx):
+    url = rctx.os.environ.get("ROOTBEER_PINNED_SDK_URL", "")
+    sha256 = rctx.os.environ.get("ROOTBEER_PINNED_SDK_SHA256", "")
+    if not url or not sha256:
+        fail("--config=pinned-sdk needs ROOTBEER_PINNED_SDK_URL and ROOTBEER_PINNED_SDK_SHA256. " +
+             "Give both with --repo_env. Remove the config to use the host SDK. docs/HERMETICITY.md has the procedure.")
+    if len(sha256) != 64 or [c for c in sha256.elems() if c not in "0123456789abcdef"]:
+        fail("ROOTBEER_PINNED_SDK_SHA256 must be 64 hex characters in lower case.")
+    if rctx.os.environ.get("ROOTBEER_MACOS_SDK"):
+        fail("ROOTBEER_MACOS_SDK selects a host SDK, and --config=pinned-sdk selects a tarball. Remove one.")
+    return url, sha256
+
+def _pinned_info(rctx):
+    """Fetches the tarball, checks it, and links the SDK as sdk/. The address stays out of info.json."""
+    url, sha256 = _pinned_address(rctx)
+    fetched = rctx.download_and_extract(url = url, sha256 = sha256, output = "pinned", allow_fail = True)
+    if not fetched.success:
+        fail("Cannot fetch or verify the pinned SDK. Check the tarball at ROOTBEER_PINNED_SDK_URL " +
+             "and the value of ROOTBEER_PINNED_SDK_SHA256.")
+    sdks = [e for e in rctx.path("pinned").readdir() if e.basename.endswith(".sdk")]
+    if len(sdks) != 1:
+        fail("The pinned SDK tarball must hold exactly one *.sdk directory. tools/pack_macos_sdk.py writes this shape.")
+    sdk = sdks[0]
+    settings = sdk.get_child("SDKSettings.json")
+    if not settings.exists:
+        fail("The pinned SDK tarball has no SDKSettings.json.")
+    if not _readable_by_lld(rctx, sdk):
+        fail("ld64.lld cannot read the pinned SDK. Its libSystem.B.tbd is absent or lists %s." % _UNREADABLE_ARCH)
+    _link_sdk(rctx, sdk)
+    return {
+        "path": "sdk",
+        "sdk_dir": "sdk",
+        "source": "pinned",
+        "version": json.decode(rctx.read(settings))["Version"],
+        "settings_sha256": _sha256(rctx, settings),
+        "tarball_sha256": sha256,
+    }
+
 def _macos_sdk_impl(rctx):
     if rctx.os.name != "mac os x":
         info = {"path": "", "version": "", "settings_sha256": ""}
+    elif rctx.os.environ.get("ROOTBEER_PINNED_SDK") == "1":
+        info = _pinned_info(rctx)
     else:
         sdk = _select_sdk(rctx)
         real = sdk.realpath
@@ -114,6 +162,11 @@ filegroup(
 
 macos_sdk = repository_rule(
     implementation = _macos_sdk_impl,
-    environ = ["ROOTBEER_MACOS_SDK"],
+    environ = [
+        "ROOTBEER_MACOS_SDK",
+        "ROOTBEER_PINNED_SDK",
+        "ROOTBEER_PINNED_SDK_URL",
+        "ROOTBEER_PINNED_SDK_SHA256",
+    ],
     local = True,
 )

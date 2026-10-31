@@ -28,6 +28,7 @@ Each input has a rung. A lower rung is stronger.
 | Test CA bundle | `trust/`, derived from curl `cacert.pem` | 0 |
 | Tool wrappers | `bazel/build_node.py` | 2 |
 | macOS SDK | Host, declared as inputs by content | 6 |
+| macOS SDK with `--config=pinned-sdk` (opt-in) | Private tarball, sha256 from the user. Never published. | 1 |
 | Linux image: Bazel 9.1.1 | GitHub release, sha256 in `docker/Dockerfile` | 0 |
 | Linux image: BusyBox, bash, dash, glibc, libstdc++, zlib, zstd, xz, libxml2, ICU | `snapshot.debian.org` `.deb` files, sha256 in `docker/Dockerfile` | 0 |
 | Linux image: unpack stage | `debian:bookworm-slim`, pinned by digest. It runs `dpkg-deb` and `ln` only. | 0 |
@@ -60,6 +61,43 @@ Set `ROOTBEER_MACOS_SDK` to select a different SDK.
 `ld64.lld` 19 cannot read a `.tbd` file that lists `arm64e.x1`.
 `bazel/sdk.bzl` skips an SDK with this architecture.
 A host that has only such an SDK fails with a clear message.
+
+### Optional pinned macOS SDK
+
+`--config=pinned-sdk` selects an SDK from a private tarball. The default stays the host SDK.
+No build needs this config. The Mac and the macOS CI runner do not use it.
+
+The Apple license does not allow a public copy of the SDK. Follow these rules:
+
+- Never commit the tarball.
+- Never upload the tarball.
+- Never add the tarball to an artifact, a shared cache, or a public URL.
+- Do not use this config with a remote service. The SDK files are action inputs, so a remote executor receives them.
+
+The config turns off the remote executor, the remote cache, the event service, and the remote downloader.
+Put `--config=pinned-sdk` last on the command line, because a later flag can turn a service on again.
+Bazel keeps a copy of the tarball in the local repository cache, and the extracted files in the output base.
+Do not share these directories, and do not share a `--disk_cache` directory that this config used.
+
+To make and use a tarball:
+
+1. Run `python3 tools/pack_macos_sdk.py --out ~/private/MacOSX.sdk.tar.gz`. Use `--sdk PATH` to select an SDK from Xcode or Command Line Tools.
+2. Add the two printed `common:pinned-sdk` lines to `~/.bazelrc`.
+3. Run `bazel build --config=pinned-sdk //node:rootbeer_22`.
+
+The helper refuses an output path in a git work tree, and it writes the file with mode 0600.
+The tarball must hold exactly one `*.sdk` directory. The repository rule refuses a wrong checksum, a missing tarball, and an SDK that `ld64.lld` cannot read.
+With the config off, the rule ignores the address and the checksum.
+
+With the config on, the SDK is rung 1, and `info.json` records `"source": "pinned"` and the tarball checksum.
+The action reads the declared `sdk/` files, not a host path.
+`info.json` goes into the published `BUILDINFO.json`, so it never records the address.
+The POSIX tools below still come from the host, so this config does not make the macOS build fully hermetic.
+The compiler is the pinned LLVM in both modes.
+
+CI may use this config only if the private tarball is available to a private runner.
+The repository has no such secret, and CI leaves the config off.
+A job that turns it on must not save a Bazel cache to the Actions cache, and it must not upload the tarball as an artifact.
 
 ### POSIX tools
 
