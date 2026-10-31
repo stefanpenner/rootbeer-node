@@ -143,6 +143,21 @@ The binary must not hold a path of the build machine. `BuildPaths` in `tests/her
 and path lengths, and different output bases. It compares the archives, and for a difference it lists the strings that
 only one binary holds. `--compare A B` compares two existing archives, for example one from CI and one from a laptop.
 
+Results, macOS arm64, no cache, two different paths:
+
+| Line | Result |
+|---|---|
+| 16 | Not reproducible. 220,725 of 70,772,032 bytes differ, all in the startup snapshot (`node::blob_data`). |
+| 18 | Not run. It has the same V8 snapshot patch as 16. |
+| 20 | Not run. |
+| 22 | Build A done. Build B was stopped by mistake and runs again. The result is not recorded yet. |
+| Linux, all lines | Not run. |
+
+The startup snapshot is the cause for Node 16. Node 16 and 18 fix the V8 random seed but do not pass `--predictable`.
+Before `0005-predictable-snapshot.patch`, the snapshot changed its length between builds, and the ICU data
+after it moved: 19.7 MB differed. The patch fixes the length. The content is still not deterministic in the old V8.
+I found no flag for that. Upstream needed V8 changes (Node 20 and later).
+
 ## Remote execution
 
 `//platforms:linux_x64_rbe` is a Linux x86_64 platform with `OSFamily=linux` and a pinned `container-image`.
@@ -195,4 +210,4 @@ For this reason `/bin/sh` is `dash`, and the image has no `ar` link.
 - The Bazel sandbox inside Docker is `processwrapper-sandbox`. It does not hide host read paths.
 - BusyBox applets have different options than GNU tools. A new build step can need a GNU option.
 - `snapshot.debian.org` is a single host. The checksums stop a changed file but cannot stop an outage.
-- No test compares two builds, so the image content is not proven reproducible byte for byte.
+- `tools/repro_check.py` compares two builds, but it has not run on Linux. The image content is not proven reproducible byte for byte.
