@@ -73,6 +73,17 @@ Node 26 has no Temporal API here, because the build declares no Rust toolchain. 
 To add a version, run `python3 tools/add_node_version.py <version>`.
 See [docs/ADDING_A_VERSION.md](docs/ADDING_A_VERSION.md).
 
+## Deno
+
+`//deno:rootbeerz_2` builds Deno 2.9.8 from source with no `webpki-roots`.
+The binary uses the system store only. `DENO_TLS_CA_STORE=mozilla` also selects the system store.
+macOS arm64 passes. Linux x86_64 is untested.
+
+The binary holds build paths from the upstream JavaScript loader, so two builds can differ.
+`deno compile` and `deno desktop` download stock upstream binaries, which hold the Mozilla roots.
+
+Pins are in `runtimes/deno.json` and `deno/pins.bzl`.
+
 ## How it works
 
 1. Bazel builds Node from pinned source with a pinned toolchain.
