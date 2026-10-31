@@ -143,8 +143,9 @@ class BinaryScan(unittest.TestCase):
         # OPENSSLDIR names the default store. macOS Node points it at /System/Library/OpenSSL.
         with open(ROOTBEER, "rb") as binary:
             data = binary.read()
-        self.assertIn(b'OPENSSLDIR: "/etc/ssl"', data)
-        self.assertNotIn(b"/System/Library/OpenSSL", data)
+        # assertTrue, not assertIn: a failed assertIn prints the whole binary (300 MB) into the log.
+        self.assertTrue(b'OPENSSLDIR: "/etc/ssl"' in data, "OPENSSLDIR is not /etc/ssl")
+        self.assertFalse(b"/System/Library/OpenSSL" in data, "OPENSSLDIR names the macOS OpenSSL path")
 
 
 class BuildPaths(unittest.TestCase):
@@ -169,7 +170,7 @@ class BuildPaths(unittest.TestCase):
         if MAJOR < 18:
             self.skipTest("OpenSSL 1.1.1 has no MODULESDIR")
         with open(ROOTBEER, "rb") as binary:
-            self.assertIn(self.FIXED_MODULES_DIR, binary.read())
+            self.assertTrue(self.FIXED_MODULES_DIR in binary.read(), "MODULESDIR is not fixed")
 
 
 class LinkCheck(unittest.TestCase):
