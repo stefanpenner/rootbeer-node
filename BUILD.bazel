@@ -8,6 +8,7 @@ exports_files([
     "MODULE.bazel",
     "MODULE.bazel.lock",
     "README.md",
+    "STATUS.md",
 ])
 
 [py_binary(

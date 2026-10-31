@@ -16,6 +16,7 @@ from pathlib import Path
 VERSIONS = json.loads(Path(os.environ["VERSIONS_JSON"]).read_text())
 MODULE = Path(os.environ["MODULE_BAZEL"])
 README = Path(os.environ["README"]).read_text()
+STATUS = Path(os.environ["STATUS"]).read_text()
 WORKFLOW = Path(os.environ["WORKFLOW"]).read_text()
 MAKE_PATCHES = Path(os.environ["MAKE_PATCHES"])
 PATCHES = [Path(p) for p in os.environ["PATCHES"].split()]
@@ -88,6 +89,21 @@ class Readme(unittest.TestCase):
         text = prose(MAJORS)
         self.assertIn(f"Node.js {text} with no bundled root certificates", README)
         self.assertIn(f"builds Node {text} on macOS 14", README)
+
+
+class Status(unittest.TestCase):
+    """STATUS.md holds the evidence for each result that the README states."""
+
+    result = STATUS.split("## Result\n")[1].split("\n## ")[0]
+
+    def test_table_lists_every_version(self):
+        rows = re.findall(r"^\| (\d+\.\d+\.\d+) \|", self.result, re.MULTILINE)
+        self.assertEqual(rows, [l["version"] for l in VERSIONS], "edit the Result table in STATUS.md")
+
+    def test_readme_gives_the_same_result(self):
+        readme = re.findall(r"^\| \d+ \| ([0-9.]+) \| `[0-9a-f]{64}` \| ([^|]+) \| ([^|]+) \|", README, re.MULTILINE)
+        status = re.findall(r"^\| (\d+\.\d+\.\d+) \| ([^|]+) \| ([^|]+) \|", self.result, re.MULTILINE)
+        self.assertEqual(readme, status, "README.md and STATUS.md disagree")
 
 
 class Patches(unittest.TestCase):

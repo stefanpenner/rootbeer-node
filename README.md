@@ -41,6 +41,10 @@ Remove a root from the host, and the next Node process stops trusting it.
 - `--use-bundled-ca` has no effect.
 - OpenSSL reads the store from `SSL_CERT_FILE`, `SSL_CERT_DIR`, or `/etc/ssl`.
 - `NODE_EXTRA_CA_CERTS` still adds roots. This is by design, for now.
+- `--use-system-ca` and `NODE_USE_SYSTEM_CA=1` add the system store of the operating system to the local store (Node 24 and 26).
+- `tls.getCACertificates('default')` does not show the local store (Node 24 and 26).
+  The list can be empty while `SSL_CERT_FILE` gives trust.
+- `tls.setDefaultCACertificates()` replaces the store. A program that passes that empty list removes its own trust.
 - Anyone who can set these variables or write these paths controls trust.
 - A host with no store has no trust. Each TLS connection fails.
 - This project does not remove a bad root from your host.
@@ -60,9 +64,11 @@ Each checksum comes from the release `SHASUMS256.txt`.
 | 18 | 18.20.8 | `ec60a6d2344ef9e1f093991ca1bb6bbe92c61c29d1762c4b99e08f87dbb91e2f` | pass | pass |
 | 16 | 16.20.2 | `33188eb11b977113adb65b2e09d71bddd63f12168ba73ceadae6c27938dc9e93` | pass | pass |
 
-"Pass" means the source, hermetic, and network tests passed.
+"Pass" means the source, hermetic, and network tests passed on a built binary.
+"Untested" means no binary exists for this pair. The patches apply and the source tests pass.
 [STATUS.md](STATUS.md) has the evidence.
 Node 16 and 18 are past end of life.
+Node 26 has no Temporal API here, because the build declares no Rust toolchain. A stock Node 26 can have it.
 
 To add a version, run `python3 tools/add_node_version.py <version>`.
 See [docs/ADDING_A_VERSION.md](docs/ADDING_A_VERSION.md).
@@ -117,7 +123,8 @@ A network error is a test error. It is never a pass.
 `bazel run //:dist_22` copies one line to `./dist/`.
 `bazel run //:dist` copies all lines.
 Each archive is `node-v<version>-rootbeer-<os>-<arch>.tar.gz` with a `.sha256` file.
-Builds are not proven reproducible.
+Reproducibility is proven for one pair only. Node 22 on macOS gave the same bytes in two builds.
+Node 16 on macOS did not. [docs/HERMETICITY.md](docs/HERMETICITY.md#reproducibility) has the results.
 
 ## CI
 

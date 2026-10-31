@@ -18,27 +18,31 @@ The patches in `patches/22/` must still apply. `source_22_test` fails when they 
 In that case run `python3 tools/make_patches.py <dir with node-vX.Y.Z trees> patches`.
 It stops when a replacement does not match exactly once, so it never writes a partial patch.
 
-## A new line (for example 24)
+## A new line (for example 28)
 
 ```
-python3 tools/add_node_version.py 24.22.2
+python3 tools/add_node_version.py 28.0.0
 ```
 
 The tool edits `MODULE.bazel`, the matrices in `ci.yml`, and the README. It then runs
-`tools/make_patches.py --only 24`. That stops with a message when the line has no entry in
+`tools/make_patches.py --only 28`. That stops with a message when the line has no entry in
 `FAMILIES`. A family is the shape of the trust code in `src/crypto/crypto_context.cc`.
-Node 16, 18, and 20 share the `legacy` family. Node 22 is `modern`.
-Node 24 is a new family. Its `NewRootCertStore`, `GetOrCreateRootCertStore`, and
-`tls.setDefaultCACertificates` live in different places, so the existing edits do not match.
+Node 16, 18, and 20 are `legacy`. Node 22 is `modern`. Node 24 and 26 are `current`.
 
-For a new family:
+If the line has a new shape:
 
 1. Write a context function in `tools/make_patches.py`, and add it to `FAMILIES`.
    Keep the semantics of the other families. The bundled list stays empty, and
    `X509_STORE_set_default_paths` runs on every path.
-2. Run `python3 tools/add_node_version.py 24.22.2` again.
+2. Run `python3 tools/add_node_version.py 28.0.0` again.
 3. Run the test chain above. The hermetic tests, including the PEM scan, prove that the binary
    holds no roots, and the network tests prove that the eMudhra hosts fail with the pinned store.
+
+A new line can also fail in the build, after the patches apply. Node 24 and 26 showed three such failures:
+
+- `configure.py` lost `--without-corepack`. `ConfigureFlags` in `tests/source/patch_test.py` now finds this in the source.
+- `tools/v8_gypfiles/abseil.gyp` gives `-framework` to `llvm-libtool-darwin`. The wrapper in `bazel/build_node.py` drops it.
+- `configure.py` looks for `cargo` on `PATH`. The driver passes `--v8-disable-temporal-support`.
 
 Pass `--old-v8` when the V8 of the line needs the Clang warning flags and the libc++ 19 patches
 (Node 16 and 18 today). Add `OLD_ZLIB_HEADERS` entries in `make_patches.py` for such a line.
@@ -48,4 +52,4 @@ Pass `--old-v8` when the V8 of the line needs the Clang warning flags and the li
 `tests/versions_test.py` fails when the CI matrix, the README table, the patch files, or
 `make_patches.py` disagree with the tags. `tests/add_node_version_test.py` tests the tool.
 
-After a build, record the result in `STATUS.md` and the artifact hashes.
+After a build, record the result in `STATUS.md` and in the README table. `versions_test` fails when these two differ.
