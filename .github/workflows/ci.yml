@@ -1,8 +1,15 @@
+# Who runs where:
+# - push to main and manual runs: the runner in the repository variable CI_RUNS_ON,
+#   for example ["self-hosted","ser9"]. Without the variable, GitHub hosts the job.
+# - pull requests: always a GitHub-hosted runner, and only after the owner approves
+#   the run in the `pr-approval` environment. A pull request never reaches self-hosted.
+# tests/ci_test.py checks these rules.
 name: ci
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
   pull_request:
 
 permissions:
@@ -10,8 +17,20 @@ permissions:
 
 jobs:
   source-tests:
-    runs-on: ${{ vars.CI_RUNS_ON || 'ubuntu-latest' }}
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Check the patches against pinned source
-        run: bazel test //tests:source_16_test //tests:source_18_test //tests:source_20_test //tests:source_22_test
+        run: bazel test //tests:source_16_test //tests:source_18_test //tests:source_20_test //tests:source_22_test //tests:ci_test
+
+  source-tests-pr:
+    if: github.event_name == 'pull_request'
+    environment: pr-approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the patches against pinned source
+        run: bazel test //tests:source_16_test //tests:source_18_test //tests:source_20_test //tests:source_22_test //tests:ci_test

@@ -85,6 +85,15 @@ The project was called `rootbeer`. Some names keep the old prefix:
 - [docs/HERMETICITY.md](docs/HERMETICITY.md): what is pinned and what is not
 - [docs/EMUDHRA.md](docs/EMUDHRA.md): the eMudhra test hosts
 
+## CI
+
+- A push to `main` and a manual run use the runner in the repository variable `CI_RUNS_ON`.
+  Without the variable, GitHub hosts the job.
+- A pull request always uses a GitHub-hosted runner.
+  It waits until the owner approves the run in the `pr-approval` environment.
+- Runs from outside contributors always need approval.
+- A pull request never uses a self-hosted runner. `tests/ci_test.py` checks this rule.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

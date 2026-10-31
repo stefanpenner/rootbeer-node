@@ -1,4 +1,5 @@
 load("@rules_python//python:py_library.bzl", "py_library")
+load("@rules_python//python:py_test.bzl", "py_test")
 load("//:versions.bzl", "NODE_VERSIONS")
 load(":defs.bzl", "rootbeer_tests")
 
@@ -12,3 +13,11 @@ py_library(
 )
 
 [rootbeer_tests(major, version) for major, version in NODE_VERSIONS.items()]
+
+py_test(
+    name = "ci_test",
+    srcs = ["ci_test.py"],
+    data = ["//.github/workflows:ci.yml"],
+    env = {"WORKFLOW": "$(rootpath //.github/workflows:ci.yml)"},
+    size = "small",
+)
