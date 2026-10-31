@@ -1,6 +1,8 @@
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 load("@node_versions//:versions.bzl", "NODE_VERSIONS")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load(":cc_probe.bzl", "cc_probe")
 load(":defs.bzl", "rootbeer_tests")
 
 py_library(
@@ -30,6 +32,23 @@ py_test(
         "BUILD_ACTION": "$(rootpath //.github/actions/build:action.yml)",
         "WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
     },
+    size = "small",
+)
+
+cc_probe(name = "cc_probe")
+
+cc_binary(
+    name = "cc_smoke",
+    srcs = ["cc_smoke.cc"],
+)
+
+py_test(
+    name = "cc_toolchain_test",
+    srcs = ["cc_toolchain_test.py"],
+    data = [
+        ":cc_probe",
+        ":cc_smoke",
+    ],
     size = "small",
 )
 

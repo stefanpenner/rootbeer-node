@@ -16,6 +16,8 @@ build --local_resources=cpu=10
 
 # The build uses the pinned toolchain only. Do not look for a host C++ compiler.
 common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+# apple_support detects Xcode by itself and reads this other variable.
+common --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1
 # The default Python bootstrap needs python3 on the host PATH.
 build --@rules_python//python/config_settings:bootstrap_impl=script
 

@@ -103,12 +103,21 @@ def _macos_sdk_impl(rctx):
     rctx.file("info.json", json.encode_indent(info, indent = "  ") + "\n")
     rctx.file("BUILD.bazel", """package(default_visibility = ["//visibility:public"])
 
-exports_files(["info.json"])
+exports_files(["info.json", "sdk/SDKSettings.json"])
 
 # Empty on Linux, where there is no SDK.
 filegroup(
     name = "files",
     srcs = glob(["sdk/**"], allow_empty = True),
+)
+
+# The small part of the SDK that the C++ toolchain reads. Each compile action takes these inputs.
+filegroup(
+    name = "cc_files",
+    srcs = glob(
+        ["sdk/SDKSettings.json", "sdk/usr/include/**", "sdk/usr/lib/*.tbd", "sdk/usr/lib/system/**"],
+        allow_empty = True,
+    ),
 )
 """)
 
