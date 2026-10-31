@@ -20,10 +20,12 @@ py_test(
     data = [
         "//:.bazelversion",
         "//.github/actions/build:action.yml",
+        "//.github/actions/setup-bazel:action.yml",
         "//.github/workflows:ci.yml",
     ],
     env = {
         "BAZELVERSION": "$(rootpath //:.bazelversion)",
+        "SETUP_BAZEL_ACTION": "$(rootpath //.github/actions/setup-bazel:action.yml)",
         "BUILD_ACTION": "$(rootpath //.github/actions/build:action.yml)",
         "WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
     },

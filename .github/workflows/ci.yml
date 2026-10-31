@@ -3,6 +3,7 @@
 #   for example ["self-hosted","ser9"]. Without the variable, GitHub hosts the job.
 # - pull requests: always a GitHub-hosted runner, and only after the owner approves
 #   the run in the `pr-approval` environment. A pull request never reaches self-hosted.
+# - macOS jobs always run on GitHub (macos-14). Only Linux uses CI_RUNS_ON.
 # tests/ci_test.py checks these rules.
 name: ci
 
@@ -21,7 +22,8 @@ jobs:
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-bazel
       - name: Check the patches against pinned source
         run: bazel test //tests:source_16_test //tests:source_18_test //tests:source_20_test //tests:source_22_test //tests:docker_test //tests:ci_test
 
@@ -31,6 +33,43 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-bazel
       - name: Check the patches against pinned source
         run: bazel test //tests:source_16_test //tests:source_18_test //tests:source_20_test //tests:source_22_test //tests:docker_test //tests:ci_test
+
+  build:
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [16, 18, 20, 22]
+        os: [macos-14, linux]
+        include:
+          - os: macos-14
+            runs_on: '"macos-14"'
+          - os: linux
+            runs_on: ${{ vars.CI_RUNS_ON || '"ubuntu-latest"' }}
+    runs-on: ${{ fromJSON(matrix.runs_on) }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/build
+        with:
+          node: ${{ matrix.node }}
+
+  build-pr:
+    if: github.event_name == 'pull_request'
+    environment: pr-approval
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [16, 18, 20, 22]
+        os: [macos-14, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/build
+        with:
+          node: ${{ matrix.node }}

@@ -11,6 +11,7 @@ from pathlib import Path
 
 WORKFLOW = Path(os.environ["WORKFLOW"]).read_text()
 ACTION = Path(os.environ["BUILD_ACTION"]).read_text()
+SETUP = Path(os.environ["SETUP_BAZEL_ACTION"]).read_text()
 BAZEL_VERSION = Path(os.environ["BAZELVERSION"]).read_text().strip()
 HOSTED = re.compile(r"^(ubuntu|macos|windows)-[a-z0-9.]+$")
 NOT_PR = "github.event_name != 'pull_request'"
@@ -110,6 +111,13 @@ class Build(unittest.TestCase):
     def build_jobs(self):
         return {n: t for n, t in jobs().items() if "matrix" in t}
 
+    def test_every_job_installs_the_pinned_bazel(self):
+        for name, text in jobs().items():
+            self.assertIn("uses: ./.github/actions/", text, name)
+            self.assertTrue(
+                "./.github/actions/setup-bazel" in text or "./.github/actions/build" in text, name
+            )
+
     def test_both_events_have_a_build_matrix(self):
         events = {field(t, "if") for t in self.build_jobs().values()}
         self.assertEqual(events, {ONLY_PR, NOT_PR})
@@ -143,20 +151,24 @@ class Build(unittest.TestCase):
             self.assertGreaterEqual(int(field(text, "timeout-minutes")), 90, name)
 
 
-class BuildAction(unittest.TestCase):
+class SetupBazelAction(unittest.TestCase):
     def test_bazel_comes_from_a_pinned_release(self):
-        self.assertIn(f"/releases/download/{BAZEL_VERSION}/bazel-{BAZEL_VERSION}-", ACTION)
-        self.assertIn("darwin-arm64", ACTION)
-        self.assertIn("linux-x86_64", ACTION)
+        self.assertIn(f"/releases/download/{BAZEL_VERSION}/bazel-{BAZEL_VERSION}-", SETUP)
+        self.assertIn("darwin-arm64", SETUP)
+        self.assertIn("linux-x86_64", SETUP)
 
     def test_each_bazel_download_has_a_sha256(self):
-        checksums = re.findall(r"\b[0-9a-f]{64}\b", ACTION)
+        checksums = re.findall(r"\b[0-9a-f]{64}\b", SETUP)
         self.assertGreaterEqual(len(set(checksums)), 2)
-        self.assertRegex(ACTION, r"shasum -a 256 -c")
+        self.assertRegex(SETUP, r"shasum -a 256 -c")
 
     def test_no_bazelisk_and_no_unpinned_download(self):
-        self.assertNotIn("bazelisk", ACTION.lower())
-        self.assertNotIn("/latest", ACTION)
+        self.assertNotIn("bazelisk", SETUP.lower())
+        self.assertNotIn("/latest", SETUP)
+
+class BuildAction(unittest.TestCase):
+    def test_build_uses_the_pinned_bazel(self):
+        self.assertIn("uses: ./.github/actions/setup-bazel", ACTION)
 
     def test_build_runs_the_tests_and_uploads_the_artifact(self):
         self.assertIn("bazel build", ACTION)
@@ -174,7 +186,7 @@ class BuildAction(unittest.TestCase):
 
 class PinnedActions(unittest.TestCase):
     def test_every_action_has_a_commit_sha(self):
-        for text in (WORKFLOW, ACTION):
+        for text in (WORKFLOW, ACTION, SETUP):
             for use in re.findall(r"^\s+(?:- )?uses: (\S+)", text, re.MULTILINE):
                 if use.startswith("./"):
                     continue
