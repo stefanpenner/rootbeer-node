@@ -27,7 +27,7 @@ Each input has a rung. A lower rung is stronger.
 | Linux sysroot (glibc 2.31, GCC 10 runtime) | Chromium sysroot bucket | 1 |
 | Test CA bundle | `trust/`, derived from curl `cacert.pem` | 0 |
 | Tool wrappers | `bazel/build_node.py` | 2 |
-| macOS SDK | Host | 6 |
+| macOS SDK | Host, declared as inputs by content | 6 |
 | Linux image: Bazel 9.1.1 | GitHub release, sha256 in `docker/Dockerfile` | 0 |
 | Linux image: BusyBox, bash, dash, glibc, libstdc++, zlib, zstd, xz, libxml2, ICU | `snapshot.debian.org` `.deb` files, sha256 in `docker/Dockerfile` | 0 |
 | Linux image: unpack stage | `debian:bookworm-slim`, pinned by digest. It runs `dpkg-deb` and `ln` only. | 0 |
@@ -44,9 +44,16 @@ I computed the LLVM checksums from the downloads.
 The Apple SDK license does not allow a pinned copy in a public repository.
 `bazel/sdk.bzl` selects an SDK from the host.
 It writes the path, the version, and a digest of `SDKSettings.json` to `info.json`.
-The build action reads `info.json`, so a new SDK makes a new cache key.
+The repository also links the SDK files as `sdk/`, and `//bazel:sysroot_files` declares them as inputs of the build action.
+A change to any SDK file makes a new cache key.
 The tarball records the same values in `BUILDINFO.json`.
-A change to an SDK file with no change to `SDKSettings.json` does not make a new key.
+
+Two paths are not linked, because Bazel cannot declare them: `Ruby.framework` (a symlink loop) and `usr/share/man` (file names with `:`).
+The build does not read them.
+
+The action still reads the SDK at its host path, from `info.json`. The declared files make the cache key correct.
+They do not make the action read the declared copy. A change to use `sdk/` in the action is a later step.
+`tests/sdk_inputs_test.py` checks the declared files.
 
 Set `ROOTBEER_MACOS_SDK` to select a different SDK.
 

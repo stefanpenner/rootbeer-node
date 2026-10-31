@@ -55,6 +55,21 @@ py_test(
 )
 
 py_test(
+    name = "sdk_inputs_test",
+    srcs = ["sdk_inputs_test.py"],
+    data = [
+        "//bazel:BUILD.bazel",
+        "@macos_sdk//:files",
+        "@macos_sdk//:info.json",
+    ],
+    env = {
+        "BAZEL_BUILD": "$(rootpath //bazel:BUILD.bazel)",
+        "SDK_INFO": "$(rootpath @macos_sdk//:info.json)",
+    },
+    size = "small",
+)
+
+py_test(
     name = "repro_check_test",
     srcs = ["repro_check_test.py"],
     deps = ["//tools:repro_check_lib"],

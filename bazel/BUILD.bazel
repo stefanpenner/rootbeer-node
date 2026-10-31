@@ -17,6 +17,7 @@ config_setting(
 )
 
 exports_files([
+    "BUILD.bazel",
     "build_node.py",
     "node_versions.bzl",
     "sdk.bzl",
@@ -65,7 +66,7 @@ alias(
 filegroup(
     name = "sysroot_files",
     srcs = select({
-        ":macos_arm64": [],
+        ":macos_arm64": ["@macos_sdk//:files"],
         ":linux_x64": ["@linux_sysroot//:files"],
     }),
 )
