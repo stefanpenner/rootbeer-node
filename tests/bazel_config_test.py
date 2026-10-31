@@ -13,6 +13,8 @@ BAZELRC = Path(os.environ["BAZELRC"]).read_text()
 GITIGNORE = Path(os.environ["GITIGNORE"]).read_text().splitlines()
 LOCKFILE = Path(os.environ["LOCKFILE"])
 PLATFORMS = Path(os.environ["PLATFORMS"]).read_text()
+NODE_DEFS = Path(os.environ["NODE_DEFS"]).read_text()
+BAZEL_BUILD = Path(os.environ["BAZEL_BUILD"]).read_text()
 TEXTS = {name: Path(path).read_text() for name, path in
          (item.split("=", 1) for item in os.environ["TEXTS"].split())}
 
@@ -76,6 +78,21 @@ class RemoteExecution(unittest.TestCase):
         self.assertIn("@platforms//cpu:x86_64", PLATFORMS)
         self.assertIn('"OSFamily": "linux"', PLATFORMS)
         self.assertRegex(PLATFORMS, r'"container-image": "docker://[^"]+@sha256:[0-9a-f]{64}"')
+
+    def test_only_the_remote_config_turns_on_the_remote_job_count(self):
+        self.assertIn("build:remote-exec --define=rootbeer_remote=1", settings())
+        self.assertEqual([line for line in settings() if "rootbeer_remote" in line],
+                         ["build:remote-exec --define=rootbeer_remote=1"])
+
+    def test_the_remote_setting_is_more_specific_than_linux(self):
+        block = re.search(r'name = "linux_x64_remote",.*?\n\)', BAZEL_BUILD, re.S).group(0)
+        self.assertIn("@platforms//os:linux", block)
+        self.assertIn("@platforms//cpu:x86_64", block)
+        self.assertIn('"rootbeer_remote": "1"', block)
+
+    def test_remote_builds_run_6_jobs_and_docker_builds_run_5(self):
+        self.assertIn('"//bazel:linux_x64_remote": 6,', NODE_DEFS)
+        self.assertIn('"//bazel:linux_x64": 5,', NODE_DEFS)
 
 
 if __name__ == "__main__":

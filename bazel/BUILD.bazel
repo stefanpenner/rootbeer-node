@@ -16,6 +16,16 @@ config_setting(
     ],
 )
 
+# `--config=remote-exec` sets this define. Select prefers this setting to :linux_x64.
+config_setting(
+    name = "linux_x64_remote",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    define_values = {"rootbeer_remote": "1"},
+)
+
 exports_files([
     "BUILD.bazel",
     "build_node.py",

@@ -37,10 +37,13 @@ def node_line(major, version, old_v8):
         ninja = "//bazel:ninja",
         sysroot_info = "//bazel:sysroot_info",
         sysroot_files = ["//bazel:sysroot_files"],
-        # The default Docker Desktop VM has 8 GB, and V8 compiles use about 1.5 GB each.
+        # Docker: the default Docker Desktop VM has 8 GB, and V8 compiles use about 1.5 GB each.
+        # Remote: the runner has 6 CPUs and 8 GiB. Node 26 peaked at 6.31 GiB with 6 jobs.
+        # With 5 jobs, Node 26 does not finish in the 1800 s scheduler limit.
         jobs = select({
             "//bazel:macos_arm64": 0,
             "//bazel:linux_x64": 5,
+            "//bazel:linux_x64_remote": 6,
         }),
     )
 
