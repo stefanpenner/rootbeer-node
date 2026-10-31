@@ -184,12 +184,14 @@ What a real run shows, on a Buildbarn runner with a cap of 6 CPUs and 8 GiB:
 | `bazel build --config=remote-exec //node:rootbeer_16` | Pass. 758.8 s. Peak memory 3.0 GiB. |
 | The same action, new output base, remote cache hit | 18.0 s. |
 | `bazel build --config=remote-exec //node:rootbeer_26` | Fail. The scheduler stopped the action after 1810 s. Peak memory 5.7 GiB. |
-| Other lines | See STATUS.md. |
+| `bazel build --config=remote-exec //node:rootbeer_22` | Pass. 1378 s. |
+| `bazel build --config=remote-exec //node:rootbeer_24` | Pass. 1648 s. 152 s under the limit. |
+| Node 18 and 20 | Not run. |
 
 Limits:
 
 - `bazel test --config=remote-exec` fails in analysis. `@bazel_tools//third_party/ijar` asks for a C++ toolchain, and none is registered.
-  So the hermetic and network tests do not run remotely. A smoke test of the Node 16 binary in a capped container passed.
+  So the hermetic and network tests do not run remotely. A smoke test of the Node 16, 22, and 24 binaries in a capped container passed.
   That smoke test is not the hermetic test.
 - The scheduler limit is the real limit, not memory. The SER9 scheduler stops an action at 1800 s by default.
   - The Bazel flag `--remote_timeout` does not change this limit.

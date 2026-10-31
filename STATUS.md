@@ -10,13 +10,13 @@ Bazel targets and artifact names keep the `rootbeer` prefix.
 ## Result
 
 "Pass" means that `source_N_test`, `hermetic_N_test`, and `network_N_test` passed on a built binary.
-"Untested" means that no binary exists for this pair. The patches apply and the source tests pass. Nothing else is known.
+"Untested" means that the hermetic and network tests have not run for this pair. The patches apply and the source tests pass.
 
 | Node | macOS arm64 | Linux x86_64 | Linux evidence |
 |---|---|---|---|
 | 26.13.0 | pass | untested | None. CI has not run this line. A remote build stopped at the 1800 s scheduler limit. |
-| 24.22.2 | untested | untested | None. CI has not run this line. |
-| 22.23.4 | pass | pass | Docker on the Mac, emulated, earlier image |
+| 24.22.2 | untested | untested | CI has not run this line. A Buildbarn build on SER9 finished, with a smoke test only. |
+| 22.23.4 | pass | pass | Docker on the Mac, emulated, earlier image. A later Buildbarn build on SER9 finished, with a smoke test only. |
 | 20.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner |
 | 18.20.8 | pass | pass | CI, GitHub-hosted Ubuntu runner |
 | 16.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner, and a remote host in the current image. A later Buildbarn build on SER9 finished, with a smoke test only. |
@@ -36,7 +36,8 @@ Cold build, one action for each line:
 | Node | macOS arm64 | Linux x86_64 |
 |---|---|---|
 | 26.13.0 | 3768 s (not a clean measurement) | stopped at 1810 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
-| 22.23.4 | 1250 s | 6704 s (Docker on the Mac, emulated, 5 compile jobs) |
+| 24.22.2 | not built | 1648 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
+| 22.23.4 | 1250 s | 6704 s (Docker on the Mac, emulated, 5 compile jobs), 1378 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
 | 20.20.2 | 920 s | 3711 s (CI) |
 | 18.20.8 | 853 s | 2375 s (CI) |
 | 16.20.2 | 784 s | 2565 s (CI), about 15 min (remote host, 4 CPUs, 8 GB), 759 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
