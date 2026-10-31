@@ -17,7 +17,7 @@ py_library(
 )
 
 exports_files(
-    glob(["fixtures/*"]),
+    glob(["fixtures/*"]) + ["probe.js"],
     visibility = ["//tests:__subpackages__"],
 )
 

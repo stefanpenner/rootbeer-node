@@ -69,6 +69,10 @@ node.version(
 
 use_repo(node, "node_versions")
 
+# Bun source and stock binaries. The version and the source sha256 come from runtimes/bun.json.
+bun = use_extension("//bun:versions.bzl", "bun")
+use_repo(bun, "bun_1_inputs", "bun_1_src", "bun_1_stock_darwin_arm64", "bun_1_stock_linux_x64", "bun_1_tarball")
+
 # The JDK source, the boot JDK, and the build tools. runtimes/jdk.json holds each pin.
 jdk = use_extension("//jdk:extension.bzl", "jdk")
 use_repo(jdk, "jdk_versions")

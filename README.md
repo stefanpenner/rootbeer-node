@@ -184,6 +184,17 @@ This table comes from upstream docs. This project did not test these runtimes.
 | PHP | [`openssl.cafile`](https://www.php.net/manual/en/openssl.configuration.php) and [`curl.cainfo`](https://www.php.net/manual/en/curl.configuration.php) are empty by default. These pages do not state the fallback. We expect the OpenSSL and libcurl defaults to apply, and we did not confirm this. | [`composer/ca-bundle`](https://github.com/composer/ca-bundle) can fall back to a bundled file. |
 | .NET | [OS libraries](https://learn.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography) supply the roots: the Windows store, `SecTrustSettings` on macOS, and OpenSSL paths on Linux. | A program can set [`CustomTrustStore`](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509chainpolicy.customtruststore). |
 
+## Bun
+
+`//bun:rootbeerz_1` builds Bun from source with no compiled-in Mozilla roots.
+The build deletes the root files and reads only the system store.
+Only macOS arm64 is pinned. The build has no LTO, so the binary differs from an upstream release.
+
+- `--use-bundled-ca` has no bundled set to use.
+- `--use-system-ca` has no extra effect.
+- `tls.rootCertificates` is empty.
+- On macOS, `SSL_CERT_FILE` or `SSL_CERT_DIR` replaces the keychain.
+
 ## Known gaps
 
 - Not fully hermetic. On macOS, the SDK and POSIX tools come from the host.
