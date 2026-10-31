@@ -172,7 +172,7 @@ I found no flag for that. Upstream needed V8 changes (Node 20 and later).
 `--config=remote-exec` makes it the target, host, and execution platform, and uses no local fallback.
 The endpoint and the keys belong in `~/.bazelrc`.
 
-- The Node build is one action. On Linux it runs 5 compile jobs.
+- The Node build is one action. It runs 6 compile jobs with `--config=remote-exec` and 5 in Docker.
 - `resource_set` (10 CPUs, 16 GB) applies only to local execution. The scheduler does not read it.
 - The properties of the platform must match the properties of the worker exactly. The scheduler does not guess.
 - The macOS build cannot run remotely, because the SDK comes from the host (rung 6).
@@ -183,20 +183,25 @@ What a real run shows, on a Buildbarn runner with a cap of 6 CPUs and 8 GiB:
 |---|---|
 | `bazel build --config=remote-exec //node:rootbeer_16` | Pass. 758.8 s. Peak memory 3.0 GiB. |
 | The same action, new output base, remote cache hit | 18.0 s. |
-| `bazel build --config=remote-exec //node:rootbeer_26` | Fail. The scheduler stopped the action after 1810 s. Peak memory 5.7 GiB. |
+| `bazel build --config=remote-exec //node:rootbeer_26`, 6 jobs | Pass. 1620 s. 180 s under the limit. Peak memory 6.31 GiB. One run. |
+| The 6-job build again, from the merged tree | Remote cache hit, 33 s. Same sha256. |
+| The same build, 5 jobs | Fail. The scheduler stopped the action after 1810 s. Peak memory 5.7 GiB. |
 | `bazel build --config=remote-exec //node:rootbeer_22` | Pass. 1378 s. |
 | `bazel build --config=remote-exec //node:rootbeer_24` | Pass. 1648 s. 152 s under the limit. |
 | Node 18 and 20 | Not run. |
 
+The Node 16, 22, and 24 rows used 5 jobs. The job count is in the action key, so these lines now need a new build. Their times with 6 jobs are not measured.
+
 Limits:
 
 - `bazel test --config=remote-exec` fails in analysis. `@bazel_tools//third_party/ijar` asks for a C++ toolchain, and none is registered.
-  So the hermetic and network tests do not run remotely. A smoke test of the Node 16, 22, and 24 binaries in a capped container passed.
+  So the hermetic and network tests do not run remotely. A smoke test of the Node 16, 22, 24, and 26 binaries in a capped container passed.
   That smoke test is not the hermetic test.
 - The scheduler limit is the real limit, not memory. The SER9 scheduler stops an action at 1800 s by default.
   - The Bazel flag `--remote_timeout` does not change this limit.
   - A rule cannot change it. Bazel 9.1.1 removes the `timeout` key from `execution_requirements` (`TargetUtils.legalExecInfoKeys`).
   - A build that needs more than 1800 s needs a higher `defaultExecutionTimeout` in the scheduler configuration.
+  - Node 26 has a small margin. A busy host or a larger release can pass the limit.
 
 ## Linux container
 

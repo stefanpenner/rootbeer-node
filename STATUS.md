@@ -14,7 +14,7 @@ Bazel targets and artifact names keep the `rootbeer` prefix.
 
 | Node | macOS arm64 | Linux x86_64 | Linux evidence |
 |---|---|---|---|
-| 26.13.0 | pass | untested | None. CI has not run this line. A remote build stopped at the 1800 s scheduler limit. |
+| 26.13.0 | pass | untested | None. CI has not run this line. A remote build with 6 jobs finished, with a smoke test only. |
 | 24.22.2 | untested | untested | CI has not run this line. A Buildbarn build on SER9 finished, with a smoke test only. |
 | 22.23.4 | pass | pass | Docker on the Mac, emulated, earlier image. A later Buildbarn build on SER9 finished, with a smoke test only. |
 | 20.20.2 | pass | pass | CI, GitHub-hosted Ubuntu runner |
@@ -35,7 +35,7 @@ Cold build, one action for each line:
 
 | Node | macOS arm64 | Linux x86_64 |
 |---|---|---|
-| 26.13.0 | 3768 s (not a clean measurement) | stopped at 1810 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
+| 26.13.0 | 3768 s (not a clean measurement) | 1620 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 6 compile jobs), stopped at 1810 s (same runner, 5 compile jobs) |
 | 24.22.2 | not built | 1648 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
 | 22.23.4 | 1250 s | 6704 s (Docker on the Mac, emulated, 5 compile jobs), 1378 s (Buildbarn on SER9, 6 CPUs, 8 GiB, 5 compile jobs) |
 | 20.20.2 | 920 s | 3711 s (CI) |
