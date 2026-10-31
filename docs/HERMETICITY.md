@@ -103,3 +103,8 @@ The sysroot sets the glibc floor at version 2.31.
 The base image is pinned by digest, and the Bazel binary is pinned by checksum.
 `apt-get` packages in that image are not pinned.
 They run tools only. The image holds no compiler.
+
+The pinned LLVM Linux tools are dynamic programs.
+They load `libstdc++`, `libz`, `libzstd`, and `libxml2` from the image.
+`ld.lld` fails with a missing `libxml2.so.2` error when the image does not supply it.
+These libraries are rung 6 inputs. Their versions are not recorded.

@@ -8,7 +8,7 @@ ADD --checksum=sha256:857bed5d2756b4d998d3caebf2d941d13d434c4eda4b1d6d7dda205736
     /usr/local/bin/bazel
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates libstdc++6 zlib1g \
+    && apt-get install -y --no-install-recommends ca-certificates libstdc++6 libxml2 libzstd1 zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 # rules_python refuses to run its interpreter setup as root.
