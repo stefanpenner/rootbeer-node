@@ -25,6 +25,30 @@ py_test(
     deps = [":sourcelib"],
 )
 
+py_test(
+    name = "inputs_test",
+    srcs = ["inputs_test.py"],
+    data = [
+        "//bun:inputs_1.json",
+        "//runtimes:bun.json",
+        "@bun_1_src//:Cargo.lock",
+    ],
+    env = {
+        "BUN_CARGO_LOCK": "$(rootpath @bun_1_src//:Cargo.lock)",
+        "BUN_INPUTS": "$(rootpath //bun:inputs_1.json)",
+        "RUNTIME_MANIFEST": "$(rootpath //runtimes:bun.json)",
+    },
+    size = "small",
+)
+
+py_test(
+    name = "driver_test",
+    srcs = ["driver_test.py"],
+    data = ["//bun:build_bun.py"],
+    env = {"BUILD_BUN": "$(rootpath //bun:build_bun.py)"},
+    size = "small",
+)
+
 alias(
     name = "stock_bun",
     actual = select({
@@ -89,4 +113,46 @@ py_test(
         ":hermetic_lib",
         "//tests:trustlib",
     ],
+)
+
+# Needs the long Bun build, so //... does not start it.
+py_test(
+    name = "hermetic_1_test",
+    srcs = ["hermetic_test.py"],
+    main = "hermetic_test.py",
+    data = _FIXTURES + [
+        ":stock_bun",
+        "//bun:rootbeerz_1",
+    ],
+    env = _ENV | {
+        "ROOTBEER_BUN": "$(rootpath //bun:rootbeerz_1)",
+        "STOCK_BUN": "$(rootpath :stock_bun)",
+    },
+    size = "medium",
+    tags = ["manual"],
+    deps = ["//tests:trustlib"],
+)
+
+# A result that cannot be decided is Inconclusive, not a pass.
+py_test(
+    name = "network_1_test",
+    srcs = ["network_test.py"],
+    main = "network_test.py",
+    data = _FIXTURES + [
+        ":stock_bun",
+        "//bun:rootbeerz_1",
+    ],
+    env = _ENV | {
+        "ROOTBEER_BUN": "$(rootpath //bun:rootbeerz_1)",
+        "STOCK_BUN": "$(rootpath :stock_bun)",
+    },
+    size = "large",
+    tags = [
+        "external",
+        "manual",
+        "no-cache",
+        "no-remote",
+        "requires-network",
+    ],
+    deps = ["//tests:trustlib"],
 )

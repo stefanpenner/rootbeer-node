@@ -142,6 +142,12 @@ class Rootbeerz(Base):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), entry["version"])
 
+    def test_revision_is_the_stock_revision(self):
+        """A source build is a canary build by default. Ours must state the release revision."""
+        ours = run_node(self.bun, "--revision", env=self.env(EMPTY))
+        stock = run_node(STOCK, "--revision", env=self.env(EMPTY))
+        self.assertEqual(ours.stdout.strip(), stock.stdout.strip())
+
     def test_store_file_supplies_trust(self):
         self.assert_trusted(self.bun, TEST_CA)
 

@@ -6,10 +6,28 @@ load("//bun:pins.bzl", "STOCK")
 _RELEASE = "https://github.com/oven-sh/bun/releases/download/bun-v{version}/{name}.zip"
 _SOURCE = "https://github.com/oven-sh/bun/archive/refs/tags/bun-v{version}.tar.gz"
 
+_CRATE = "https://static.crates.io/crates/{name}/{file_name}"
+_NPM = "https://registry.npmjs.org/{name}/-/{short}-{version}.tgz"
+
 _SOURCE_BUILD = """
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["package.json"])
+exports_files([
+    "Cargo.lock",
+    "package.json",
+])
+
+# Tests and benchmarks are absent. The build does not read them.
+filegroup(
+    name = "build_tree",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            "bench/**",
+            "test/**",
+        ],
+    ),
+)
 
 # A deleted file is absent here, so the source test can see the deletion.
 filegroup(
@@ -62,6 +80,52 @@ _patched_source = repository_rule(
     },
 )
 
+_INPUTS_BUILD = """
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["inputs.json"])
+
+filegroup(
+    name = "all",
+    srcs = glob(["files/**"]),
+)
+"""
+
+def _basename(url):
+    return url.rsplit("/", 1)[-1]
+
+def _build_inputs_impl(rctx):
+    inputs = json.decode(rctx.read(rctx.attr.pins))
+    for item in inputs["archives"]:
+        rctx.download(
+            url = item["url"],
+            output = "files/archives/%s/%s" % (item["name"], _basename(item["url"])),
+            sha256 = item["sha256"],
+        )
+    for item in inputs["deps"]:
+        rctx.download(url = item["url"], output = "files/deps/%s.tar.gz" % item["name"], sha256 = item["sha256"])
+    for item in inputs["crates"]:
+        file_name = "%s-%s.crate" % (item["name"], item["version"])
+        rctx.download(
+            url = _CRATE.format(name = item["name"], file_name = file_name),
+            output = "files/crates/" + file_name,
+            sha256 = item["sha256"],
+        )
+    for item in inputs["npm"]:
+        short = item["name"].rsplit("/", 1)[-1]
+        rctx.download(
+            url = _NPM.format(name = item["name"], short = short, version = item["version"]),
+            output = "files/npm/%s@%s.tgz" % (item["name"].replace("/", "__"), item["version"]),
+            integrity = item["integrity"],
+        )
+    rctx.file("inputs.json", rctx.read(rctx.attr.pins))
+    rctx.file("BUILD.bazel", _INPUTS_BUILD)
+
+_build_inputs = repository_rule(
+    implementation = _build_inputs_impl,
+    attrs = {"pins": attr.label(mandatory = True, allow_single_file = True)},
+)
+
 def _bun_impl(mctx):
     manifest = json.decode(mctx.read(Label("//runtimes:bun.json")))
     for entry in manifest["versions"]:
@@ -80,6 +144,10 @@ def _bun_impl(mctx):
             sha256 = entry["sha256"],
             strip_prefix = "bun-bun-v%s" % version,
             patch = Label("//bun:patches/0001-system-store-only.patch"),
+        )
+        _build_inputs(
+            name = prefix + "inputs",
+            pins = Label("//bun:inputs_%s.json" % line),
         )
         http_archive(
             name = prefix + "stock_darwin_arm64",

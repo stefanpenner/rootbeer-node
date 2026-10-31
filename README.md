@@ -136,6 +136,17 @@ Node 16 on macOS did not. [docs/HERMETICITY.md](docs/HERMETICITY.md#reproducibil
 - A push to `main` uses the runner in the `CI_RUNS_ON` variable. Without it, GitHub hosts the job.
 - Bazel is pinned and checked by sha256. Each action has a commit SHA.
 
+## Bun
+
+`//bun:rootbeerz_1` builds Bun from source with no compiled-in Mozilla roots.
+The build deletes the root files and reads only the system store.
+Only macOS arm64 is pinned. The build has no LTO, so the binary differs from an upstream release.
+
+- `--use-bundled-ca` has no bundled set to use.
+- `--use-system-ca` has no extra effect.
+- `tls.rootCertificates` is empty.
+- On macOS, `SSL_CERT_FILE` or `SSL_CERT_DIR` replaces the keychain.
+
 ## Known gaps
 
 - Not fully hermetic. On macOS, the SDK and POSIX tools come from the host.

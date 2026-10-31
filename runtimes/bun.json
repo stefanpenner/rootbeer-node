@@ -1,7 +1,7 @@
 {
   "runtime": "bun",
   "upstream": {"kind": "github-release", "repo": "oven-sh/bun"},
-  "os": ["macos-14", "ubuntu-latest"],
+  "os": ["macos-14"],
   "versions": [
     {
       "line": "1",
