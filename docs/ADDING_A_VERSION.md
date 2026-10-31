@@ -24,7 +24,7 @@ It stops when a replacement does not match exactly once, so it never writes a pa
 python3 tools/add_node_version.py 28.0.0
 ```
 
-The tool edits `MODULE.bazel`, the matrices in `ci.yml`, and the README. It then runs
+The tool edits `MODULE.bazel`, `runtimes/node.json`, and the README. It then runs
 `tools/make_patches.py --only 28`. That stops with a message when the line has no entry in
 `FAMILIES`. A family is the shape of the trust code in `src/crypto/crypto_context.cc`.
 Node 16, 18, and 20 are `legacy`. Node 22 is `modern`. Node 24 and 26 are `current`.
@@ -49,7 +49,8 @@ Pass `--old-v8` when the V8 of the line needs the Clang warning flags and the li
 
 ## What the tests check
 
-`tests/versions_test.py` fails when the CI matrix, the README table, the patch files, or
-`make_patches.py` disagree with the tags. `tests/add_node_version_test.py` tests the tool.
+`tests/versions_test.py` fails when the README table, the patch files, or `make_patches.py`
+disagree with the tags. `tests/runtimes_test.py` fails when `runtimes/node.json` disagrees
+with the tags. CI reads its matrix from that file. `tests/add_node_version_test.py` tests the tool.
 
 After a build, record the result in `STATUS.md` and in the README table. `versions_test` fails when these two differ.
