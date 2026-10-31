@@ -35,7 +35,6 @@ class Compare(unittest.TestCase):
         self.assertFalse(result.same)
         self.assertIn("MODULESDIR: /tmp/build-a/execroot/x", result.only_a)
         self.assertIn("MODULESDIR: /var/other-b/execroot/x", result.only_b)
-        self.assertEqual(result.first_difference, a.index(b"tmp/build-a") if False else result.first_difference)
         self.assertGreater(result.first_difference, 0)
 
     def test_a_length_difference_with_no_string_is_still_different(self):
