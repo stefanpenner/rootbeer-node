@@ -2,8 +2,11 @@ load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@node_versions//:versions.bzl", "NODE_VERSIONS")
 
 exports_files([
+    ".bazelrc",
     ".bazelversion",
+    ".gitignore",
     "MODULE.bazel",
+    "MODULE.bazel.lock",
     "README.md",
 ])
 

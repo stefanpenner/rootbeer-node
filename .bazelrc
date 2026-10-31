@@ -1,4 +1,12 @@
 common --enable_bzlmod
+
+# MODULE.bazel.lock is committed. It pins the hash of every registry file.
+# A stale lockfile is an error. Run `bazel mod deps --lockfile_mode=update` to change it.
+common --lockfile_mode=error
+
+# Actions get a fixed environment, and no network. A test that needs the network has the tag requires-network.
+build --incompatible_strict_action_env
+build --sandbox_default_allow_network=false
 build --jobs=10
 test --test_output=errors
 test --test_verbose_timeout_warnings
@@ -10,5 +18,18 @@ build --local_resources=cpu=10
 common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
 # The default Python bootstrap needs python3 on the host PATH.
 build --@rules_python//python/config_settings:bootstrap_impl=script
+
+
+# Remote execution on a Linux x86_64 executor. Add the endpoint and the TLS flags to ~/.bazelrc:
+#   build:remote-exec --remote_executor=grpcs://HOST:PORT
+# The Node build is one action. It needs 16 GB of memory and 10 CPUs on the executor.
+# The macOS build cannot run remotely, because the SDK comes from the host.
+build:remote-exec --platforms=//platforms:linux_x64_rbe
+build:remote-exec --host_platform=//platforms:linux_x64_rbe
+build:remote-exec --extra_execution_platforms=//platforms:linux_x64_rbe
+build:remote-exec --spawn_strategy=remote
+build:remote-exec --noremote_local_fallback
+build:remote-exec --remote_timeout=3h
+build:remote-exec --remote_download_toplevel
 
 try-import %workspace%/user.bazelrc

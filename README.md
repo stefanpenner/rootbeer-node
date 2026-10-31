@@ -92,7 +92,7 @@ On Linux, you can build in the pinned Docker image:
 docker build --platform linux/amd64 -f docker/Dockerfile -t rootbeer-node-linux .
 docker run --rm --platform linux/amd64 \
   -v "$PWD":/src:ro -v rootbeer-bazel-cache:/cache rootbeer-node-linux \
-  bazel --output_user_root=/cache build --lockfile_mode=off --symlink_prefix=/ --jobs=1 \
+  bazel --output_user_root=/cache build --symlink_prefix=/ --jobs=1 \
   //node:rootbeer_22 //node:dist_22 --output_groups=+dist
 ```
 
