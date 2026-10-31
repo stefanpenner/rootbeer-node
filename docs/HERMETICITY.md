@@ -83,6 +83,8 @@ libc++ and libc++abi link statically.
 
 The Linux binary links glibc libraries and `libgcc_s` only.
 These libraries come from the host at run time.
+Node passes `-latomic` to the linker on Linux with Clang.
+`MODULE.bazel` removes `libatomic.so` from the sysroot, so the linker selects `libatomic.a`.
 The sysroot sets the glibc floor at version 2.31.
 
 ## Known limits
