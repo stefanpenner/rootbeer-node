@@ -1,6 +1,6 @@
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
-load("//:versions.bzl", "NODE_VERSIONS")
+load("@node_versions//:versions.bzl", "NODE_VERSIONS")
 load(":defs.bzl", "rootbeer_tests")
 
 py_library(
@@ -66,4 +66,50 @@ py_test(
         "no-sandbox",
         "requires-docker",
     ],
+)
+
+# One target per kind, so a caller never names the lines.
+[test_suite(
+    name = kind + "_tests",
+    tests = [":%s_%d_test" % (kind, major) for major in NODE_VERSIONS],
+) for kind in ("source", "hermetic", "network")]
+
+py_test(
+    name = "versions_test",
+    srcs = ["versions_test.py"],
+    data = [
+        "//:MODULE.bazel",
+        "//:README.md",
+        "//.github/workflows:ci.yml",
+        "//patches:all",
+        "//tools:make_patches.py",
+        "@node_versions//:versions.json",
+    ],
+    env = {
+        "VERSIONS_JSON": "$(rootpath @node_versions//:versions.json)",
+        "MODULE_BAZEL": "$(rootpath //:MODULE.bazel)",
+        "README": "$(rootpath //:README.md)",
+        "WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
+        "MAKE_PATCHES": "$(rootpath //tools:make_patches.py)",
+        "PATCHES": "$(rootpaths //patches:all)",
+    },
+    size = "small",
+)
+
+py_test(
+    name = "add_node_version_test",
+    srcs = ["add_node_version_test.py"],
+    data = [
+        "//:MODULE.bazel",
+        "//:README.md",
+        "//.github/workflows:ci.yml",
+        "//tools:add_node_version.py",
+    ],
+    env = {
+        "ADD_NODE_VERSION": "$(rootpath //tools:add_node_version.py)",
+        "MODULE_BAZEL": "$(rootpath //:MODULE.bazel)",
+        "README": "$(rootpath //:README.md)",
+        "WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
+    },
+    size = "small",
 )

@@ -122,10 +122,6 @@ class Build(unittest.TestCase):
         events = {field(t, "if") for t in self.build_jobs().values()}
         self.assertEqual(events, {ONLY_PR, NOT_PR})
 
-    def test_matrix_covers_every_node_line(self):
-        for name, text in self.build_jobs().items():
-            self.assertEqual(matrix_list(text, "node"), ["16", "18", "20", "22"], name)
-
     def test_matrix_covers_macos_and_linux(self):
         for name, text in self.build_jobs().items():
             self.assertIn("macos-14", matrix_list(text, "os"), name)

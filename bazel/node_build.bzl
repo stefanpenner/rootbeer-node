@@ -23,6 +23,8 @@ def _node_build_impl(ctx):
     args.add("--clang", ctx.file.clang)
     args.add("--ninja", ctx.file.ninja)
     args.add("--sysroot-info", ctx.file.sysroot_info)
+    if ctx.attr.old_v8:
+        args.add("--old-v8")
     if ctx.attr.jobs:
         args.add("--jobs", ctx.attr.jobs)
     args.add("--out-binary", binary)
@@ -66,6 +68,7 @@ node_build = rule(
         "ninja": attr.label(mandatory = True, allow_single_file = True),
         "sysroot_info": attr.label(mandatory = True, allow_single_file = True),
         "sysroot_files": attr.label_list(allow_files = True),
+        "old_v8": attr.bool(doc = "Adds the Clang warning flags that the V8 of Node 16 and 18 needs."),
         "jobs": attr.int(doc = "Compile jobs. Zero keeps the driver default."),
         "_driver": attr.label(default = "//bazel:build_node.py", allow_single_file = True),
     },

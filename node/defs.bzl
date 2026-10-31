@@ -2,18 +2,19 @@
 
 load("//bazel:node_build.bzl", "node_build")
 
-def node_line(major, version):
+def node_line(major, version, old_v8):
     """Defines the stock control binary and the rootbeer binary for one line.
 
     Args:
       major: The major version, for example 22.
       version: The pinned version, for example "22.23.4".
+      old_v8: True for the lines whose V8 needs the older Clang flags.
     """
     native.alias(
         name = "stock_%d" % major,
         actual = select({
-            "//bazel:macos_arm64": "@stock_%d_darwin_arm64//:bin/node" % major,
-            "//bazel:linux_x64": "@stock_%d_linux_x64//:bin/node" % major,
+            "//bazel:macos_arm64": "@node_versions//:stock_%d_darwin_arm64" % major,
+            "//bazel:linux_x64": "@node_versions//:stock_%d_linux_x64" % major,
         }),
     )
 
@@ -28,8 +29,9 @@ def node_line(major, version):
             "//bazel:macos_arm64": "arm64",
             "//bazel:linux_x64": "x64",
         }),
-        source = "@node_%d//:source" % major,
-        configure = "@node_%d//:configure.py" % major,
+        source = "@node_versions//:source_%d" % major,
+        configure = "@node_versions//:configure_%d" % major,
+        old_v8 = old_v8,
         llvm = "//bazel:llvm",
         clang = "//bazel:clang",
         ninja = "//bazel:ninja",
