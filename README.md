@@ -11,7 +11,9 @@ Each binary uses only the local (system) trust store.
 4. It tests that the binary starts and connects to valid hosts.
    It also tests that the binary fails against the eMudhra test hosts when the local store has no emSign roots.
 
-`MODULE.bazel` holds the source pins. Each checksum comes from the release `SHASUMS256.txt`.
+`MODULE.bazel` holds the source pins, one `node.version` tag per line.
+Each checksum comes from the release `SHASUMS256.txt`.
+Adding a version is one tag. [docs/ADDING_A_VERSION.md](docs/ADDING_A_VERSION.md) has the steps.
 
 | Line | Version | Source sha256 | macOS arm64 | Linux x86_64 |
 |---|---|---|---|---|
@@ -49,7 +51,8 @@ The binary holds no root certificates. All trust comes from the host.
 | Path | Content |
 |---|---|
 | `MODULE.bazel` | Pins for the Node source, the stock Node controls, and the toolchain |
-| `versions.bzl` | The Node lines |
+| `bazel/node_versions.bzl` | The extension that turns each `node.version` tag into repos and targets |
+| `tools/add_node_version.py` | Adds or bumps a Node release. See [docs/ADDING_A_VERSION.md](docs/ADDING_A_VERSION.md) |
 | `patches/<line>/` | The patches for each Node line |
 | `bazel/` | The `node_build` rule, the build driver, and the toolchain repositories |
 | `node/` | The build and archive targets |

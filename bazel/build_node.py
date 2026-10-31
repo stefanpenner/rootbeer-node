@@ -33,7 +33,6 @@ OLD_V8_FLAGS = [
     "-Wno-implicit-function-declaration",
     "-Wno-int-conversion",
 ]
-EXTRA_FLAGS = {16: OLD_V8_FLAGS, 18: OLD_V8_FLAGS, 20: [], 22: []}
 
 COMPILER_WRAPPER = """#!/bin/sh
 link=1
@@ -78,6 +77,7 @@ def parse_args():
     parser.add_argument("--clang", required=True)
     parser.add_argument("--ninja", required=True)
     parser.add_argument("--sysroot-info", required=True)
+    parser.add_argument("--old-v8", action="store_true")
     parser.add_argument("--jobs", type=int, default=10)
     parser.add_argument("--out-binary", required=True)
     parser.add_argument("--out-tarball", required=True)
@@ -111,7 +111,7 @@ def libcxx_include_flags(llvm, os_name):
     return flags
 
 
-def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, major):
+def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, old_v8):
     bin_dir = os.path.join(scratch, "bin")
     os.makedirs(bin_dir, exist_ok=True)
     llvm_bin = os.path.join(llvm, "bin")
@@ -120,7 +120,7 @@ def write_tools(args, llvm, ninja, python, sysroot, sysroot_version, scratch, ma
         f"-ffile-prefix-map={llvm}=llvm",
         "-Wno-unused-command-line-argument",
         "-fuse-ld=lld",
-    ] + EXTRA_FLAGS[major]
+    ] + (OLD_V8_FLAGS if old_v8 else [])
     if args.os == "darwin":
         common += ["-isysroot", sysroot]
     else:
@@ -263,7 +263,6 @@ def pack(args, binary, license_file, info):
 
 def main():
     args = parse_args()
-    major = int(args.version.split(".")[0])
     python = os.path.abspath(sys.executable)
     clang = os.path.abspath(args.clang)
     llvm = os.path.dirname(os.path.dirname(clang))
@@ -281,7 +280,7 @@ def main():
     tree = os.path.join(scratch, "node")
 
     bin_dir = write_tools(
-        args, llvm, ninja, python, sysroot, sysroot_info["version"], scratch, major)
+        args, llvm, ninja, python, sysroot, sysroot_info["version"], scratch, args.old_v8)
     env = build_env(bin_dir, scratch, sysroot, args.os)
 
     copy_source(source_root, tree)

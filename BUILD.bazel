@@ -1,24 +1,24 @@
 load("@rules_python//python:py_binary.bzl", "py_binary")
-load("//:versions.bzl", "NODE_VERSIONS")
+load("@node_versions//:versions.bzl", "NODE_VERSIONS")
 
 exports_files([
     ".bazelversion",
+    "MODULE.bazel",
     "README.md",
-    "versions.bzl",
 ])
 
 [py_binary(
     name = "dist_%d" % major,
-    srcs = ["tools/collect_dist.py"],
+    srcs = ["//tools:collect_dist.py"],
     args = ["$(rootpaths //node:dist_%d)" % major],
     data = ["//node:dist_%d" % major],
-    main = "tools/collect_dist.py",
+    main = "//tools:collect_dist.py",
 ) for major in NODE_VERSIONS]
 
 py_binary(
     name = "dist",
-    srcs = ["tools/collect_dist.py"],
+    srcs = ["//tools:collect_dist.py"],
     args = ["$(rootpaths //node:dist_%d)" % major for major in NODE_VERSIONS],
     data = ["//node:dist_%d" % major for major in NODE_VERSIONS],
-    main = "tools/collect_dist.py",
+    main = "//tools:collect_dist.py",
 )

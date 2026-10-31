@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Regenerates patches/ from verified Node source trees.
 
-Usage: make_patches.py <directory that holds node-vX.Y.Z trees> <patches directory>
+Usage: make_patches.py <directory that holds node-vX.Y.Z trees> <patches directory> [MODULE.bazel]
+       make_patches.py --only <major> <sources> <patches> [MODULE.bazel]
+       make_patches.py --list [MODULE.bazel]
+
+The versions come from the node.version tags in MODULE.bazel. A new line needs a family
+below. A new release of an existing line needs nothing here.
 
 Every replacement must match exactly once. A new Node release that moves the
 trust code stops this tool instead of producing a partial patch.
@@ -12,7 +17,23 @@ import os
 import re
 import sys
 
-VERSIONS = {"22": "22.23.4", "20": "20.20.2", "18": "18.20.8", "16": "16.20.2"}
+# The shape of the trust code in crypto_context.cc. Node 16, 18, and 20 share one.
+FAMILIES = {"16": "legacy", "18": "legacy", "20": "legacy", "22": "modern"}
+DEFAULT_MODULE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "MODULE.bazel")
+
+
+def read_versions(module_bazel):
+    """Returns {major: (version, old_v8)} from the node.version tags, in file order."""
+    with open(module_bazel, encoding="utf-8") as stream:
+        text = stream.read()
+    versions = {}
+    for tag in re.findall(r"^node\.version\(\n(.*?)^\)", text, re.MULTILINE | re.DOTALL):
+        fields = dict(re.findall(r'^    (\w+) = "([^"]*)",$', tag, re.MULTILINE))
+        old_v8 = re.search(r"^    old_v8 = True,$", tag, re.MULTILINE) is not None
+        versions[fields["major"]] = (fields["version"], old_v8)
+    if not versions:
+        raise SystemExit(f"no node.version tags in {module_bazel}")
+    return versions
 
 EMPTY_HEADER = """\
 // rootbeer: This file holds no certificates. Trust comes from the local store.
@@ -25,7 +46,6 @@ STORE_COMMENT = """\
 """
 
 
-OLD_V8_MAJORS = ("16", "18")
 CHAR_TRAITS_PATH = "deps/v8/src/inspector/uint16-char-traits.h"
 CHAR_TRAITS_USERS = (
     "deps/v8/src/inspector/string-16.h",
@@ -226,7 +246,11 @@ def zlib_macos_test(text, name):
 
 
 def edits_for(major):
-    context = modern_context if major == "22" else legacy_context
+    if major not in FAMILIES:
+        raise SystemExit(
+            f"Node {major} has no family in FAMILIES. Compare its src/crypto/crypto_context.cc "
+            "with a known family, then add a context function for it. See docs/ADDING_A_VERSION.md.")
+    context = {"modern": modern_context, "legacy": legacy_context}[FAMILIES[major]]
     edits = {
         "src/crypto/crypto_context.cc": context,
         "src/node_options.cc": options,
@@ -262,8 +286,18 @@ def write(patches, major, name, text):
 
 
 def main():
-    sources, patches = sys.argv[1:]
-    for major, version in VERSIONS.items():
+    if sys.argv[1] == "--list":
+        for major, (version, old_v8) in read_versions(sys.argv[2] if len(sys.argv) > 2 else DEFAULT_MODULE).items():
+            print(major, version, str(old_v8).lower())
+        return
+    only = None
+    if sys.argv[1] == "--only":
+        only = sys.argv[2]
+        del sys.argv[1:3]
+    sources, patches, *rest = sys.argv[1:]
+    for major, (version, old_v8) in read_versions(rest[0] if rest else DEFAULT_MODULE).items():
+        if only and major != only:
+            continue
         root = os.path.join(sources, f"node-v{version}")
         header = "src/node_root_certs.h"
         write(patches, major, "0001-empty-root-certs.patch",
@@ -273,13 +307,15 @@ def main():
             before = read(root, path)
             forced += unified(path, before, edit(before, f"{major}:{path}"))
         write(patches, major, "0002-force-local-store.patch", forced)
-        if major in OLD_V8_MAJORS:
+        if old_v8:
             traits = new_file(CHAR_TRAITS_PATH, CHAR_TRAITS_HEADER)
             for path in CHAR_TRAITS_USERS:
                 before = read(root, path)
                 traits += unified(path, before, include_char_traits(before, f"{major}:{path}"))
             write(patches, major, "0003-libcxx-19-char-traits.patch", traits)
             zlib = ""
+            if major not in OLD_ZLIB_HEADERS:
+                raise SystemExit(f"Node {major} is old_v8 but OLD_ZLIB_HEADERS has no entry for it")
             for path in OLD_ZLIB_HEADERS[major]:
                 before = read(root, path)
                 zlib += unified(path, before, zlib_macos_test(before, f"{major}:{path}"))

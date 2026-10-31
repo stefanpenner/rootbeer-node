@@ -29,23 +29,23 @@ def rootbeer_tests(major, version):
         "EMSIGN_STORE": "$(rootpath fixtures/emsign-roots.pem)",
     }
 
-    source = "@node_%d//:" % major
+    source = "@node_versions//:"
     py_test(
         name = "source_%d_test" % major,
         srcs = ["source/patch_test.py"],
         main = "source/patch_test.py",
         deps = [":trustlib"],
         data = [
-            source + "src/node_root_certs.h",
-            source + "src/crypto/crypto_context.cc",
-            source + "src/node_options.cc",
-            source + "deps/openssl/openssl_common.gypi",
+            source + "node_root_certs_h_%d" % major,
+            source + "crypto_context_cc_%d" % major,
+            source + "node_options_cc_%d" % major,
+            source + "openssl_common_gypi_%d" % major,
         ],
         env = {
-            "ROOT_CERTS_H": "$(rootpath %ssrc/node_root_certs.h)" % source,
-            "CRYPTO_CONTEXT_CC": "$(rootpath %ssrc/crypto/crypto_context.cc)" % source,
-            "NODE_OPTIONS_CC": "$(rootpath %ssrc/node_options.cc)" % source,
-            "OPENSSL_COMMON_GYPI": "$(rootpath %sdeps/openssl/openssl_common.gypi)" % source,
+            "ROOT_CERTS_H": "$(rootpath %snode_root_certs_h_%d)" % (source, major),
+            "CRYPTO_CONTEXT_CC": "$(rootpath %scrypto_context_cc_%d)" % (source, major),
+            "NODE_OPTIONS_CC": "$(rootpath %snode_options_cc_%d)" % (source, major),
+            "OPENSSL_COMMON_GYPI": "$(rootpath %sopenssl_common_gypi_%d)" % (source, major),
         },
         size = "small",
     )

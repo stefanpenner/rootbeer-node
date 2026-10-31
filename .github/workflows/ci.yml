@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: ./.github/actions/setup-bazel
       - name: Check the patches against pinned source
-        run: bazel test //tests:source_16_test //tests:source_18_test //tests:source_20_test //tests:source_22_test //tests:docker_test //tests:ci_test
+        run: bazel test //tests:source_tests //tests:docker_test //tests:ci_test //tests:versions_test //tests:add_node_version_test
 
   source-tests-pr:
     if: github.event_name == 'pull_request'
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: ./.github/actions/setup-bazel
       - name: Check the patches against pinned source
-        run: bazel test //tests:source_16_test //tests:source_18_test //tests:source_20_test //tests:source_22_test //tests:docker_test //tests:ci_test
+        run: bazel test //tests:source_tests //tests:docker_test //tests:ci_test //tests:versions_test //tests:add_node_version_test
 
   build:
     if: github.event_name != 'pull_request'
