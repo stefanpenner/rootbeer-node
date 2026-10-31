@@ -1,0 +1,4 @@
+exports_files(
+    ["ci.yml"],
+    visibility = ["//tests:__pkg__"],
+)
