@@ -13,6 +13,7 @@ spec.loader.exec_module(tool)
 MODULE = Path(os.environ["MODULE_BAZEL"]).read_text()
 WORKFLOW = Path(os.environ["WORKFLOW"]).read_text()
 README = Path(os.environ["README"]).read_text()
+STATUS = Path(os.environ["STATUS"]).read_text()
 
 
 def shasums(version):
@@ -72,6 +73,65 @@ class NewLine(unittest.TestCase):
     def test_old_v8_is_written_only_when_asked(self):
         module, _, _ = tool.update(MODULE, WORKFLOW, README, "17.9.1", shasums("17.9.1"), old_v8=True)
         self.assertRegex(module, r'major = "17",[^)]*old_v8 = True,')
+
+
+class Status(unittest.TestCase):
+    """versions_test.py requires that STATUS.md and README.md give the same result."""
+
+    @staticmethod
+    def result(status):
+        return status.split("## Result\n")[1].split("\n## ")[0]
+
+    @staticmethod
+    def rows(result):
+        return re.findall(r"^\| (\d+\.\d+\.\d+) \| ([^|]+) \| ([^|]+) \|", result, re.MULTILINE)
+
+    def assert_agrees_with_readme(self, status, readme):
+        in_readme = re.findall(r"^\| \d+ \| ([0-9.]+) \| `[0-9a-f]{64}` \| ([^|]+) \| ([^|]+) \|", readme, re.MULTILINE)
+        self.assertEqual(in_readme, self.rows(self.result(status)))
+
+    def test_bump_replaces_the_row_of_the_line(self):
+        status = tool.update_status(STATUS, "22.99.0")
+        versions = [row[0] for row in self.rows(self.result(status))]
+        expected = ["22.99.0" if v.startswith("22.") else v for v, _, _ in self.rows(self.result(STATUS))]
+        self.assertEqual(versions, expected)
+
+    def test_bump_marks_the_new_version_untested(self):
+        status = tool.update_status(STATUS, "22.99.0")
+        self.assertIn("| 22.99.0 | untested | untested | None.", status)
+
+    def test_bump_leaves_the_other_rows_alone(self):
+        before = self.result(STATUS).splitlines()
+        after = self.result(tool.update_status(STATUS, "22.99.0")).splitlines()
+        self.assertEqual(
+            [line for line in before if not line.startswith("| 22.")],
+            [line for line in after if not line.startswith("| 22.")],
+        )
+
+    def test_new_line_goes_first(self):
+        versions = [row[0] for row in self.rows(self.result(tool.update_status(STATUS, "98.0.0")))]
+        self.assertEqual(versions[0], "98.0.0")
+        self.assertEqual(versions[1:], [row[0] for row in self.rows(self.result(STATUS))])
+
+    def test_new_line_keeps_the_order_of_the_lines(self):
+        versions = [row[0] for row in self.rows(self.result(tool.update_status(STATUS, "17.9.1")))]
+        majors = [int(v.split(".")[0]) for v in versions]
+        self.assertEqual(majors, sorted(majors, reverse=True))
+        self.assertIn(17, majors)
+
+    def test_only_the_result_table_changes(self):
+        status = tool.update_status(STATUS, "22.99.0")
+        self.assertEqual(status.split("## Result\n")[0], STATUS.split("## Result\n")[0])
+        self.assertEqual(status.split("\n## ", 2)[2], STATUS.split("\n## ", 2)[2])
+
+    def test_bump_and_new_line_agree_with_the_readme(self):
+        for version in ("22.99.0", "98.0.0"):
+            _, _, readme = tool.update(MODULE, WORKFLOW, README, version, shasums(version), old_v8=False)
+            self.assert_agrees_with_readme(tool.update_status(STATUS, version), readme)
+
+    def test_a_status_with_no_result_table_is_an_error(self):
+        with self.assertRaises(SystemExit):
+            tool.update_status("# Status\n", "22.99.0")
 
 
 class Refusals(unittest.TestCase):

@@ -29,9 +29,15 @@ def unpinned(text):
             if not re.search(r"\b(sha256|integrity)\s*=", call)]
 
 
+def sdks_all_have_checksums(call):
+    """go_sdk.download has no sha256 attribute. Its sdks attribute maps a platform to [file, sha256]."""
+    sums = re.findall(r'"[^"]+\.tar\.gz",\s*"([^"]*)"', call)
+    return bool(sums) and all(re.fullmatch(r"[0-9a-f]{64}", s) for s in sums)
+
+
 def downloads_without_checksum(text):
     return [call.split("\n")[0] for call in calls(text, re.compile(r"\.download(_and_extract)?\("))
-            if not re.search(r"\b(sha256|integrity)\s*=", call)]
+            if not re.search(r"\b(sha256|integrity)\s*=", call) and not sdks_all_have_checksums(call)]
 
 
 class Pinned(unittest.TestCase):
@@ -40,6 +46,15 @@ class Pinned(unittest.TestCase):
         self.assertEqual(downloads_without_checksum('rctx.download(url = "u", output = "o")'),
                          ['.download(url = "u", output = "o")'])
         self.assertEqual(unpinned('http_archive(\n  name = "x",\n  sha256 = "ab",\n)'), [])
+
+    def test_a_go_sdk_is_pinned_only_when_each_file_has_a_checksum(self):
+        sum_ = "a" * 64
+        self.assertEqual(downloads_without_checksum('go_sdk.download(version = "1")'), ['.download(version = "1")'])
+        self.assertEqual(downloads_without_checksum(
+            'go_sdk.download(\n  sdks = {"linux_amd64": ["go.tar.gz", "%s"]},\n)' % sum_), [])
+        self.assertEqual(downloads_without_checksum(
+            'go_sdk.download(\n  sdks = {"a": ["a.tar.gz", "%s"], "b": ["b.tar.gz", "short"]},\n)' % sum_),
+            ['.download('])
 
     def test_the_scan_sees_the_downloads_of_the_repository(self):
         total = sum(len(list(calls(text, DOWNLOADING))) for text in FILES.values())

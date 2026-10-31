@@ -175,11 +175,20 @@ py_test(
 )
 
 py_test(
+    name = "bump_workflow_test",
+    srcs = ["bump_workflow_test.py"],
+    data = ["//.github/workflows:version-bumps.yml"],
+    env = {"BUMP_WORKFLOW": "$(rootpath //.github/workflows:version-bumps.yml)"},
+    size = "small",
+)
+
+py_test(
     name = "add_node_version_test",
     srcs = ["add_node_version_test.py"],
     data = [
         "//:MODULE.bazel",
         "//:README.md",
+        "//:STATUS.md",
         "//.github/workflows:ci.yml",
         "//tools:add_node_version.py",
     ],
@@ -187,6 +196,7 @@ py_test(
         "ADD_NODE_VERSION": "$(rootpath //tools:add_node_version.py)",
         "MODULE_BAZEL": "$(rootpath //:MODULE.bazel)",
         "README": "$(rootpath //:README.md)",
+        "STATUS": "$(rootpath //:STATUS.md)",
         "WORKFLOW": "$(rootpath //.github/workflows:ci.yml)",
     },
     size = "small",

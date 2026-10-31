@@ -1,4 +1,7 @@
 exports_files(
-    ["ci.yml"],
+    [
+        "ci.yml",
+        "version-bumps.yml",
+    ],
     visibility = ["//tests:__pkg__"],
 )
