@@ -130,3 +130,15 @@ http_archive(
     sha256 = "5df5be9357b425cdd70d92d4697d07e7d55d7a923f037c22dc80a78e85842d2c",
     urls = ["https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/4f611ec025be98214164d4bf9fbe8843f58533f7/debian_bullseye_amd64_sysroot.tar.xz"],
 )
+
+deno = use_extension("//deno:versions.bzl", "deno")
+use_repo(
+    deno,
+    "deno_2_crates",
+    "deno_2_rust",
+    "deno_2_rusty_v8",
+    "deno_2_rusty_v8_binding",
+    "deno_2_src",
+    "deno_2_stock",
+    "deno_cmake",
+)
