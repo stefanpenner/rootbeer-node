@@ -26,7 +26,8 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-PRINTABLE = re.compile(rb"[\x20-\x7e]{6,}")
+# A path or an identifier, not a run of random bytes that happen to be printable.
+PRINTABLE = re.compile(rb"[A-Za-z0-9_./:=+ -]{8,}")
 LIMIT = 40
 
 # No cache may answer a build, and no remote service may take part.
@@ -47,17 +48,23 @@ class Result:
     first_difference: int
     size_a: int
     size_b: int
+    differing_bytes: int = 0
+
+
+def readable(data):
+    """The strings that look like a path or an identifier. Random bytes seldom hold a / or a _ or a dot in a run."""
+    return {s.decode() for s in PRINTABLE.findall(data) if re.search(rb"[/_.]", s)}
 
 
 def compare(a, b):
     """Compares two byte strings. Lists the printable strings that only one side holds."""
     first = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
     if a == b:
-        return Result(True, [], [], 0, len(a), len(b))
-    strings_a = {s.decode() for s in PRINTABLE.findall(a)}
-    strings_b = {s.decode() for s in PRINTABLE.findall(b)}
+        return Result(True, [], [], 0, len(a), len(b), 0)
+    strings_a = readable(a)
+    strings_b = readable(b)
     return Result(False, sorted(strings_a - strings_b)[:LIMIT], sorted(strings_b - strings_a)[:LIMIT],
-                  first, len(a), len(b))
+                  first, len(a), len(b), sum(x != y for x, y in zip(a, b)) + abs(len(a) - len(b)))
 
 
 def members(path):
@@ -117,7 +124,8 @@ def report(a, b):
         return 0
     print("DIFFERENT. Members that differ:", ", ".join(differing_members(a, b)) or "(none, only the container)")
     result = compare(node_binary(a), node_binary(b))
-    print(f"bin/node: {result.size_a} and {result.size_b} bytes, first difference at {result.first_difference}")
+    print(f"bin/node: {result.size_a} and {result.size_b} bytes, first difference at {result.first_difference}, "
+          f"{result.differing_bytes} bytes differ")
     for label, strings in (("only in A", result.only_a), ("only in B", result.only_b)):
         for text in strings:
             print(f"  {label}: {text[:200]}")
