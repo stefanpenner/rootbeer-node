@@ -3,6 +3,7 @@
 import crypto_bundle
 import os
 import re
+import subprocess
 import tempfile
 import unittest
 
@@ -17,6 +18,13 @@ CA = path_from_env("TEST_CA")
 LEAF = path_from_env("TEST_LEAF")
 LEAF_KEY = path_from_env("TEST_LEAF_KEY")
 EMPTY = path_from_env("EMPTY_STORE")
+READOBJ = path_from_env("READOBJ")
+ALLOWED_LIBRARIES = re.compile(
+    r"^(/usr/lib/libSystem\.B\.dylib"
+    r"|/usr/lib/libobjc\.A\.dylib"
+    r"|/System/Library/Frameworks/[^ ]+"
+    r"|(ld-linux-x86-64|libc|libdl|libgcc_s|libm|libpthread|librt)\.so\.[0-9]+)$"
+)
 
 ROOT_COUNT = "require('tls').rootCertificates.length"
 BUNDLED_FLAG = "--use-bundled-ca"
@@ -114,6 +122,20 @@ class BinaryScan(unittest.TestCase):
 
     def test_rootbeer_binary_holds_no_marker(self):
         self.assertEqual(self.scan(ROOTBEER), [])
+
+
+class LinkCheck(unittest.TestCase):
+    """The binary must not load a C++ library or any other library from the host toolchain."""
+
+    def test_only_system_libraries(self):
+        output = subprocess.run(
+            [READOBJ, "--needed-libs", ROOTBEER], capture_output=True, text=True, check=True
+        ).stdout
+        block = output.split("NeededLibraries [", 1)[1].split("]", 1)[0]
+        libraries = [line.strip() for line in block.splitlines() if line.strip()]
+        self.assertTrue(libraries, output)
+        unexpected = [name for name in libraries if not ALLOWED_LIBRARIES.match(name)]
+        self.assertEqual(unexpected, [])
 
 
 class LocalStoreOnly(unittest.TestCase):

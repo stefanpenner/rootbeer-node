@@ -103,3 +103,49 @@ NODE_SOURCES = {
     )
     for major, (version, sha256) in NODE_SOURCES.items()
 ]
+
+# The hermetic toolchain. docs/HERMETICITY.md gives the rung of each input.
+macos_sdk = use_repo_rule("//bazel:sdk.bzl", "macos_sdk")
+
+macos_sdk(name = "macos_sdk")
+
+http_archive(
+    name = "llvm_darwin_arm64",
+    build_file = "//bazel:llvm.BUILD",
+    sha256 = "d93bf12952d89fe4ec7501c40475718b722407da6a8d651f05c995863468e570",
+    strip_prefix = "LLVM-19.1.7-macOS-ARM64",
+    urls = ["https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-macOS-ARM64.tar.xz"],
+)
+
+http_archive(
+    name = "llvm_linux_x64",
+    build_file = "//bazel:llvm.BUILD",
+    sha256 = "4a5ec53951a584ed36f80240f6fbf8fdd46b4cf6c7ee87cc2d5018dc37caf679",
+    strip_prefix = "LLVM-19.1.7-Linux-X64",
+    urls = ["https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-Linux-X64.tar.xz"],
+)
+
+NINJA_BUILD = 'exports_files(["ninja"])'
+
+http_archive(
+    name = "ninja_darwin",
+    build_file_content = NINJA_BUILD,
+    sha256 = "c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b",
+    urls = ["https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-mac.zip"],
+)
+
+http_archive(
+    name = "ninja_linux",
+    build_file_content = NINJA_BUILD,
+    sha256 = "5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6",
+    urls = ["https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-linux.zip"],
+)
+
+# Chromium publishes this Debian bullseye sysroot by content revision.
+http_archive(
+    name = "linux_sysroot",
+    build_file = "//bazel:linux_sysroot.BUILD",
+    patch_cmds = ["printf '{\"path\": \".\", \"version\": \"debian-bullseye-amd64\", \"settings_sha256\": \"5df5be9357b425cdd70d92d4697d07e7d55d7a923f037c22dc80a78e85842d2c\"}\\n' > info.json"],
+    sha256 = "5df5be9357b425cdd70d92d4697d07e7d55d7a923f037c22dc80a78e85842d2c",
+    urls = ["https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain/4f611ec025be98214164d4bf9fbe8843f58533f7/debian_bullseye_amd64_sysroot.tar.xz"],
+)

@@ -57,12 +57,14 @@ def rootbeer_tests(major, version):
         deps = [":trustlib"],
         data = common_data + [
             "loopback.js",
+            "//bazel:readobj",
             "fixtures/testonly-ca.pem",
             "fixtures/testonly-leaf.pem",
             "fixtures/testonly-leaf.key",
         ],
         env = common_env | {
             "LOOPBACK_JS": "$(rootpath loopback.js)",
+            "READOBJ": "$(rootpath //bazel:readobj)",
             "TEST_CA": "$(rootpath fixtures/testonly-ca.pem)",
             "TEST_CA_SUBJECT_HASH": TEST_CA_SUBJECT_HASH,
             "TEST_LEAF": "$(rootpath fixtures/testonly-leaf.pem)",

@@ -15,3 +15,53 @@ config_setting(
         "@platforms//cpu:x86_64",
     ],
 )
+
+exports_files(["build_node.py"])
+
+alias(
+    name = "llvm",
+    actual = select({
+        ":macos_arm64": "@llvm_darwin_arm64//:toolchain",
+        ":linux_x64": "@llvm_linux_x64//:toolchain",
+    }),
+)
+
+alias(
+    name = "clang",
+    actual = select({
+        ":macos_arm64": "@llvm_darwin_arm64//:bin/clang",
+        ":linux_x64": "@llvm_linux_x64//:bin/clang",
+    }),
+)
+
+alias(
+    name = "readobj",
+    actual = select({
+        ":macos_arm64": "@llvm_darwin_arm64//:bin/llvm-readobj",
+        ":linux_x64": "@llvm_linux_x64//:bin/llvm-readobj",
+    }),
+)
+
+alias(
+    name = "ninja",
+    actual = select({
+        ":macos_arm64": "@ninja_darwin//:ninja",
+        ":linux_x64": "@ninja_linux//:ninja",
+    }),
+)
+
+alias(
+    name = "sysroot_info",
+    actual = select({
+        ":macos_arm64": "@macos_sdk//:info.json",
+        ":linux_x64": "@linux_sysroot//:info.json",
+    }),
+)
+
+filegroup(
+    name = "sysroot_files",
+    srcs = select({
+        ":macos_arm64": [],
+        ":linux_x64": ["@linux_sysroot//:files"],
+    }),
+)

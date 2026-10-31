@@ -6,6 +6,7 @@ filegroup(
 )
 
 exports_files([
+    "configure.py",
     "deps/openssl/openssl_common.gypi",
     "src/crypto/crypto_context.cc",
     "src/node_options.cc",
