@@ -3,14 +3,34 @@
 Node.js 16, 18, 20, and 22 with no bundled root certificates.
 Each binary trusts only the local (system) trust store.
 
+Stock Node trusts its own list of roots. Ours trusts what your host trusts.
+
+## Example
+
+Both commands use a store that has no emSign roots.
+`testevg1.emsign.com` is an eMudhra test host. Mozilla, Google, and Apple distrust its root.
+
+```sh
+export SSL_CERT_FILE=trust/mozilla-no-emsign.pem
+
+# stock Node
+node -p 'require("tls").rootCertificates.length'    # 119
+node tests/probe.js https://testevg1.emsign.com     # {"trusted":true,"status":302}
+
+# systemca-nodejs
+./node -p 'require("tls").rootCertificates.length'  # 0
+./node tests/probe.js https://testevg1.emsign.com   # {"trusted":false,"code":"UNABLE_TO_GET_ISSUER_CERT_LOCALLY",...}
+./node tests/probe.js https://example.com           # {"trusted":true,"status":200}
+```
+
+Stock Node ignores your store and trusts emSign.
+Our Node uses your store, so it rejects emSign and still trusts valid hosts.
+
 ## Why
 
-Stock Node ships its own list of root certificates.
-You cannot remove a root from that list.
+You cannot remove a root from the list in stock Node.
 You must wait for a new Node release.
-
-This build removes the list.
-The host store is the only source of trust.
+Here, the host store is the only source of trust.
 Remove a root from the host, and the next Node process stops trusting it.
 
 ## Trust model
