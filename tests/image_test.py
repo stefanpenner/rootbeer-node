@@ -56,6 +56,15 @@ class ImageContent(unittest.TestCase):
         for tool in ["sed", "cp", "mkdir", "env", "cat", "rm", "ln", "find", "awk", "tar", "bash"]:
             self.assertEqual(sh(f"command -v {tool}").returncode, 0, tool)
 
+    def test_bash_runs_bazel_test_scripts(self):
+        # Bazel test scripts use `#!/usr/bin/env bash` and `set -o pipefail`.
+        script = (
+            "printf '#!/usr/bin/env bash\\nset -euo pipefail\\necho \\\"${BASH_VERSION%%%%.*}\\\"\\n' "
+            "> /tmp/t.sh && chmod +x /tmp/t.sh && /tmp/t.sh"
+        )
+        result = sh(script)
+        self.assertEqual(result.stdout.strip(), "5", result.stderr)
+
     def test_runtime_libraries_load(self):
         # Each library that the LLVM tools need must be present with a SONAME link.
         for lib in ["libc.so.6", "libm.so.6", "libgcc_s.so.1", "libstdc++.so.6", "libz.so.1",

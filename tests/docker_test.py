@@ -28,6 +28,9 @@ REQUIRED_PACKAGES = {
     "busybox-static",
     # BusyBox sh runs its own applets before it looks at PATH. That hides the tool wrappers.
     "dash",
+    # Bazel test scripts start with `#!/usr/bin/env bash` and use `set -o pipefail`.
+    "bash",
+    "libtinfo6",
 }
 
 
