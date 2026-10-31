@@ -42,9 +42,13 @@ py_test(
         "//:MODULE.bazel.lock",
         "//:README.md",
         "//.github/actions/build:action.yml",
+        "//bazel:BUILD.bazel",
+        "//node:defs.bzl",
         "//platforms:BUILD.bazel",
     ],
     env = {
+        "BAZEL_BUILD": "$(rootpath //bazel:BUILD.bazel)",
+        "NODE_DEFS": "$(rootpath //node:defs.bzl)",
         "PLATFORMS": "$(rootpath //platforms:BUILD.bazel)",
         "BAZELRC": "$(rootpath //:.bazelrc)",
         "GITIGNORE": "$(rootpath //:.gitignore)",

@@ -22,9 +22,10 @@ build --@rules_python//python/config_settings:bootstrap_impl=script
 
 # Remote execution on a Linux x86_64 executor. Add the endpoint and the TLS flags to ~/.bazelrc:
 #   build:remote-exec --remote_executor=grpcs://HOST:PORT
-# The Node build is one action. On Linux it runs 5 compile jobs. resource_set applies only to
-# local execution, and the scheduler does not read it. docs/HERMETICITY.md has the measurements.
+# The Node build is one action. It runs 6 compile jobs here and 5 in Docker. resource_set applies
+# only to local execution, and the scheduler does not read it. docs/HERMETICITY.md has the measurements.
 # The macOS build cannot run remotely, because the SDK comes from the host.
+build:remote-exec --define=rootbeer_remote=1
 build:remote-exec --platforms=//platforms:linux_x64_rbe
 build:remote-exec --host_platform=//platforms:linux_x64_rbe
 build:remote-exec --extra_execution_platforms=//platforms:linux_x64_rbe
