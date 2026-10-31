@@ -2,6 +2,7 @@
 
 import importlib.util
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -37,11 +38,23 @@ class CryptoContext(SourceCase):
         self.assertAbsent("root_certs[", self.text)
 
     def test_store_load_has_no_condition(self):
-        self.assertAbsent("if (per_process::cli_options->ssl_openssl_cert_store) {\n    "
-                         "CHECK_EQ(1, X509_STORE_set_default_paths", self.text)
-        self.assertAbsent("if (per_process::cli_options->ssl_openssl_cert_store) {\n    "
-                         "X509_STORE_set_default_paths", self.text)
+        # Node 24 and 26 read the flag into a local first, so match any form of the condition.
+        conditional = re.compile(r"if \([^)]*ssl_openssl_cert_store\) \{\n\s*(CHECK_EQ\(1, )?X509_STORE_set_default_paths")
+        self.assertIsNone(conditional.search(self.text), "the local store load has a condition")
         self.assertIn("X509_STORE_set_default_paths(store)", self.text)
+
+    def test_bundled_roots_do_not_enter_the_store(self):
+        self.assertIsNone(
+            re.search(r"GetBundledRootCertificates\(\)\) \{\n\s*CHECK_EQ\(1, X509_STORE_add_cert", self.text),
+            "bundled roots enter the store")
+
+    def test_bundled_initializer_is_empty(self):
+        # The header is empty too, and this check holds if a later release fills it in another way.
+        if "InitializeBundledRootCertificates" not in self.text:
+            self.skipTest("this line has no initializer")
+        body = self.text.split("InitializeBundledRootCertificates() {", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn("return {};", body)
+        self.assertAbsent("PEM_read_bio_X509", body)
 
 
 class Snapshot(SourceCase):

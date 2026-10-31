@@ -97,15 +97,31 @@ class NoBundledRoots(unittest.TestCase):
         result = run_node(ROOTBEER, "--use-openssl-ca", BUNDLED_FLAG, "-v")
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    @unittest.skipIf(MAJOR < 22, "getCACertificates exists on Node 22 only")
+    @unittest.skipIf(MAJOR < 22, "getCACertificates exists on Node 22 and newer")
     def test_bundled_ca_list_is_empty(self):
         self.assertEqual(evaluate(ROOTBEER, "require('tls').getCACertificates('bundled').length"), 0)
 
-    @unittest.skipIf(MAJOR < 22, "getCACertificates exists on Node 22 only")
+    @unittest.skipIf(MAJOR < 22, "getCACertificates exists on Node 22 and newer")
     def test_default_ca_list_holds_no_stock_roots(self):
         env = store_env(EMPTY, tempfile.mkdtemp())
         self.assertEqual(
             evaluate(ROOTBEER, "require('tls').getCACertificates('default').length", env=env), 0)
+
+
+@unittest.skipIf(MAJOR < 24, "this check is for the current patch family")
+class TrustApi(unittest.TestCase):
+    """Node 24 and 26 have a CA list API. docs/HERMETICITY.md states these results."""
+
+    def setUp(self):
+        self.env = store_env(CA, tempfile.mkdtemp())
+
+    def test_default_list_does_not_show_the_local_store(self):
+        # The connection trusts the store. The list holds only bundled and extra roots.
+        self.assertEqual(
+            evaluate(ROOTBEER, "require('tls').getCACertificates('default').length", env=self.env), 0)
+
+    def test_system_flag_keeps_the_local_store(self):
+        self.assertTrue(loopback(ROOTBEER, "--use-system-ca", env=self.env)["trusted"])
 
 
 class BinaryScan(unittest.TestCase):
