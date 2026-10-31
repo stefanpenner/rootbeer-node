@@ -67,6 +67,10 @@ def prose(majors):
     return ", ".join(ordered[:-1]) + ", and " + ordered[-1]
 
 
+def set_matrix(text, lines):
+    return re.sub(r"^        node: \[.*\]$", "        node: [%s]" % ", ".join(lines), text, flags=re.MULTILINE)
+
+
 def update(module, workflow, readme, version, shasums, old_v8):
     """Returns the new text of MODULE.bazel, ci.yml, and README.md."""
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
@@ -96,13 +100,15 @@ def update(module, workflow, readme, version, shasums, old_v8):
             at = module.index("use_repo(node,")
             module = module[:at].rstrip("\n") + "\n\n" + tag + "\n" + module[at:]
 
+    main_jobs, pull_request_job = workflow.split("\n  build-pr:\n")
     majors = re.findall(r'^node\.version\(\n    major = "(\d+)"', module, re.MULTILINE)
     text = prose(majors)
 
-    def matrix(match):
-        return "        node: [%s]" % ", ".join(sorted(majors, key=int))
-
-    workflow = re.sub(r"^        node: \[.*\]$", matrix, workflow, flags=re.MULTILINE)
+    ordered = sorted(majors, key=int)
+    workflow = "\n  build-pr:\n".join((
+        set_matrix(main_jobs, ordered),
+        set_matrix(pull_request_job, [ordered[0], ordered[-1]]),
+    ))
 
     readme = re.sub(r"Node\.js [0-9, and]+ with no bundled root certificates",
                     f"Node.js {text} with no bundled root certificates", readme)

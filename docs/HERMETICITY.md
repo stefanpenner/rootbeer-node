@@ -18,7 +18,7 @@ Each input has a rung. A lower rung is stronger.
 
 | Input | Source | Rung |
 |---|---|---|
-| Node source 16, 18, 20, 22 | nodejs.org, checksum from `SHASUMS256.txt` | 0 |
+| Node source, each line in `MODULE.bazel` | nodejs.org, checksum from `SHASUMS256.txt` | 0 |
 | Stock Node controls | nodejs.org, checksum from `SHASUMS256.txt` | 0 |
 | rootbeer-node patches | This repository | 0 |
 | Clang, lld, libc++ 19.1.7 | LLVM GitHub release | 1 |
@@ -142,7 +142,7 @@ Every `http_archive` has a `sha256`. No repository rule downloads without a chec
 The binary must not hold a path of the build machine. `BuildPaths` in `tests/hermetic_test.py` fails when it holds
 `/execroot/`, `bazel-out/`, or a sandbox path. It found three leaks:
 
-- OpenSSL 3 `MODULESDIR` (Node 18, 20, 22). `0002-force-local-store.patch` sets it to `/nonexistent/ossl-modules`.
+- OpenSSL 3 `MODULESDIR` (Node 18 and newer). `0002-force-local-store.patch` sets it to `/nonexistent/ossl-modules`.
 - The sysroot path in compiler output. The wrapper adds `-ffile-prefix-map={sysroot}=/sysroot`.
 - The object paths that lld writes in the Mach-O symbol table (N_OSO). The link adds `-Wl,-S`.
 
@@ -154,10 +154,11 @@ Results, macOS arm64, no cache, two different paths:
 
 | Line | Result |
 |---|---|
+| 26, 24 | Not run. |
 | 16 | Not reproducible. 220,725 of 70,772,032 bytes differ, all in the startup snapshot (`node::blob_data`). |
 | 18 | Not run. It has the same V8 snapshot patch as 16. |
 | 20 | Not run. |
-| 22 | Build A done. Build B was stopped by mistake and runs again. The result is not recorded yet. |
+| 22 | Reproducible. Both archives have the same sha256 (`d9165531…bd33c`) when built at different workspace paths and output bases. |
 | Linux, all lines | Not run. |
 
 The startup snapshot is the cause for Node 16. Node 16 and 18 fix the V8 random seed but do not pass `--predictable`.

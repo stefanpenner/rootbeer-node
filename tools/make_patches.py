@@ -17,8 +17,15 @@ import os
 import re
 import sys
 
-# The shape of the trust code in crypto_context.cc. Node 16, 18, and 20 share one.
-FAMILIES = {"16": "legacy", "18": "legacy", "20": "legacy", "22": "modern"}
+# The shape of the trust code in crypto_context.cc.
+FAMILIES = {
+    "16": "legacy",
+    "18": "legacy",
+    "20": "legacy",
+    "22": "modern",
+    "24": "current",
+    "26": "current",
+}
 DEFAULT_MODULE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "MODULE.bazel")
 
 
@@ -143,7 +150,9 @@ OLD_ZLIB_HEADERS = {
 
 
 def substitute(pattern, replacement, text, name):
-    result, count = re.subn(pattern, lambda _: replacement, text, flags=re.S)
+    # A callable replacement gets the match. A string replacement is literal text.
+    replace = replacement if callable(replacement) else lambda _: replacement
+    result, count = re.subn(pattern, replace, text, flags=re.S)
     if count != 1:
         raise SystemExit(f"{name}: expected one match, found {count}: {pattern}")
     return result
@@ -217,6 +226,49 @@ def modern_context(text, name):
     return text
 
 
+def current_context(text, name):
+    """Node 24 and 26 read use_system_ca from the Environment. Node 26 keeps smart pointers."""
+    text = substitute(
+        r"static const char\* const root_certs\[\] = \{\n"
+        r'#include "node_root_certs.h"  // NOLINT\(build/include_order\)\n'
+        r"\};\n\n",
+        "", text, name)
+    text = substitute(
+        r"  // Read the bundled certificates in node_root_certs.h into\n.*?"
+        r"  return bundled_root_certs;\n\}\n\n// TODO\(joyeecheung\)",
+        "  // rootbeer: The binary holds no roots.\n  return {};\n}\n\n// TODO(joyeecheung)",
+        text, name)
+    loop = r"(?:X509\* cert|const auto& cert)"
+    value = r"cert(?:\.get\(\))?"
+    text = substitute(
+        r"  if \(ssl_openssl_cert_store\) \{\n"
+        r"    CHECK_EQ\(1, X509_STORE_set_default_paths\(store\)\);\n"
+        r"  \} else \{\n"
+        rf"    for \({loop} : GetBundledRootCertificates\(\)\) \{{\n"
+        rf"      CHECK_EQ\(1, X509_STORE_add_cert\(store, {value}\)\);\n"
+        r"    \}\n"
+        r"    if \(use_system_ca\) \{\n"
+        rf"      (for \({loop} : GetSystemStoreCACertificates\(\)\) \{{)\n"
+        rf"        (CHECK_EQ\(1, X509_STORE_add_cert\(store, {value}\)\);)\n"
+        r"      \}\n"
+        r"    \}\n"
+        r"  \}\n",
+        lambda match: (
+            STORE_COMMENT
+            + "  CHECK_EQ(1, X509_STORE_set_default_paths(store));\n"
+            + "  if (use_system_ca) {\n"
+            + f"    {match[1]}\n"
+            + f"      {match[2]}\n"
+            + "    }\n"
+            + "  }\n"),
+        text, name)
+    text = substitute(
+        r"  Local<Value> result\[arraysize\(root_certs\)\];.*?"
+        r"Array::New\(env->isolate\(\), result, arraysize\(root_certs\)\)\);",
+        "  args.GetReturnValue().Set(Array::New(env->isolate()));", text, name)
+    return text
+
+
 def options(text, name):
     text = substitute(
         r'  if \(use_openssl_ca && use_bundled_ca\) \{\n'
@@ -268,7 +320,11 @@ def edits_for(major):
         raise SystemExit(
             f"Node {major} has no family in FAMILIES. Compare its src/crypto/crypto_context.cc "
             "with a known family, then add a context function for it. See docs/ADDING_A_VERSION.md.")
-    context = {"modern": modern_context, "legacy": legacy_context}[FAMILIES[major]]
+    context = {
+        "current": current_context,
+        "modern": modern_context,
+        "legacy": legacy_context,
+    }[FAMILIES[major]]
     edits = {
         "src/crypto/crypto_context.cc": context,
         "src/node_options.cc": options,
@@ -315,15 +371,21 @@ def main():
         only = sys.argv[2]
         del sys.argv[1:3]
     sources, patches, *rest = sys.argv[1:]
-    for major, (version, old_v8) in read_versions(rest[0] if rest else DEFAULT_MODULE).items():
+    generate(sources, patches, rest[0] if rest else DEFAULT_MODULE, only)
+
+
+def generate(sources, patches, module_bazel, only):
+    for major, (version, old_v8) in read_versions(module_bazel).items():
         if only and major != only:
             continue
+        # A line with no family stops here, before any patch file exists.
+        edits = edits_for(major)
         root = os.path.join(sources, f"node-v{version}")
         header = "src/node_root_certs.h"
         write(patches, major, "0001-empty-root-certs.patch",
               unified(header, read(root, header), EMPTY_HEADER))
         forced = ""
-        for path, edit in edits_for(major).items():
+        for path, edit in edits.items():
             before = read(root, path)
             forced += unified(path, before, edit(before, f"{major}:{path}"))
         write(patches, major, "0002-force-local-store.patch", forced)
