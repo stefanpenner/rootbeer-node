@@ -2,7 +2,14 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "bin/clang",
+    "bin/clang++",
+    "bin/llvm-ar",
     "bin/llvm-readobj",
+    "bin/llvm-strip",
+    "lib/libc++.a",
+    "lib/libc++abi.a",
+    "lib/x86_64-unknown-linux-gnu/libc++.a",
+    "lib/x86_64-unknown-linux-gnu/libc++abi.a",
 ])
 
 filegroup(
@@ -57,4 +64,11 @@ filegroup(
             "bin/clang-tidy",
         ],
     ),
+)
+
+# Bindgen loads libclang at build time. This group stays apart from the toolchain group, because a
+# change to the toolchain group changes the inputs of each Node build.
+filegroup(
+    name = "libclang",
+    srcs = glob(["lib/libclang.dylib"], allow_empty = True),
 )

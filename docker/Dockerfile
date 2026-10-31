@@ -3,7 +3,7 @@
 #
 # Every input has a sha256. The final stage starts at scratch.
 # Build from the repository root:
-#   docker build --platform linux/amd64 -f docker/Dockerfile -t rootbeer-node-linux .
+#   docker build --platform linux/amd64 -f docker/Dockerfile -t rootbeerz-linux .
 #
 # To change a package, run tools/pin_debs.py and paste its output here.
 

@@ -5,7 +5,4 @@ filegroup(
     visibility = ["//tests:__pkg__"],
 )
 
-exports_files(
-    ["node.json"],
-    visibility = ["//tests:__pkg__"],
-)
+exports_files(glob(["*.json"]))

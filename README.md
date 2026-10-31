@@ -1,6 +1,8 @@
-# rootbeer-node
+# rootbeerz
 
-> **Why the name.** Root certs are removed. Node is left. So: rootbeer-node. It trusts only the root store on your system.
+> **Why the name.** Root certs are removed from the runtimes. Only the root store on your system is left. So: rootbeerz.
+
+rootbeerz builds runtimes with their bundled root certificates removed.
 
 Node.js 16, 18, 20, 22, 24, and 26 with no bundled root certificates.
 Each binary trusts only the local (system) trust store.
@@ -19,7 +21,7 @@ export SSL_CERT_FILE=trust/mozilla-no-emsign.pem
 node -p 'require("tls").rootCertificates.length'    # 119
 node tests/probe.js https://testevg1.emsign.com     # {"trusted":true,"status":302}
 
-# rootbeer-node
+# rootbeerz
 ./node -p 'require("tls").rootCertificates.length'  # 0
 ./node tests/probe.js https://testevg1.emsign.com   # {"trusted":false,"code":"UNABLE_TO_GET_ISSUER_CERT_LOCALLY",...}
 ./node tests/probe.js https://example.com           # {"trusted":true,"status":200}
@@ -73,6 +75,22 @@ Node 26 has no Temporal API here, because the build declares no Rust toolchain. 
 To add a version, run `python3 tools/add_node_version.py <version>`.
 See [docs/ADDING_A_VERSION.md](docs/ADDING_A_VERSION.md).
 
+## JDK
+
+The JDK line 25 build has an empty `cacerts`. See [docs/JDK.md](docs/JDK.md).
+Java does not read `SSL_CERT_FILE`. Give the JVM a trust store with a system property.
+
+## Deno
+
+`//deno:rootbeerz_2` builds Deno 2.9.8 from source with no `webpki-roots`.
+The binary uses the system store only. `DENO_TLS_CA_STORE=mozilla` also selects the system store.
+macOS arm64 passes. Linux x86_64 is untested.
+
+The binary holds build paths from the upstream JavaScript loader, so two builds can differ.
+`deno compile` and `deno desktop` download stock upstream binaries, which hold the Mozilla roots.
+
+Pins are in `runtimes/deno.json` and `deno/pins.bzl`.
+
 ## How it works
 
 1. Bazel builds Node from pinned source with a pinned toolchain.
@@ -97,9 +115,9 @@ The binary needs macOS 14 or later, or Linux glibc 2.25 or later.
 On Linux, you can build in the pinned Docker image:
 
 ```sh
-docker build --platform linux/amd64 -f docker/Dockerfile -t rootbeer-node-linux .
+docker build --platform linux/amd64 -f docker/Dockerfile -t rootbeerz-linux .
 docker run --rm --platform linux/amd64 \
-  -v "$PWD":/src:ro -v rootbeer-bazel-cache:/cache rootbeer-node-linux \
+  -v "$PWD":/src:ro -v rootbeer-bazel-cache:/cache rootbeerz-linux \
   bazel --output_user_root=/cache build --symlink_prefix=/ --jobs=1 \
   //node:rootbeer_22 //node:dist_22 --output_groups=+dist
 ```
@@ -138,6 +156,47 @@ Node 16 on macOS did not. [docs/HERMETICITY.md](docs/HERMETICITY.md#reproducibil
 - A push to `main` uses the runner in the `CI_RUNS_ON` variable. Without it, GitHub hosts the job.
 - Bazel is pinned and checked by sha256. Each action has a commit SHA.
 
+## Python certifi and other runtimes
+
+`//certifi:rootbeerz_certifi` builds a wheel named `certifi`. It replaces stock certifi and holds no certificate.
+It has the same `where()`, `contents()`, and `__version__`.
+
+`where()` returns the first file that it finds:
+
+1. The file in `SSL_CERT_FILE`.
+2. The default file from `ssl.get_default_verify_paths()`.
+3. A known OS file. `certifi/src/certifi/core.py` lists these files.
+
+If it finds no file, `where()` raises `FileNotFoundError`. A missing `SSL_CERT_FILE` file also raises it.
+
+Limits of the wheel:
+
+- The API returns one file. It cannot use a store that is only a directory, a keychain, or the Windows store.
+- `requests` calls `where()` when it loads. With no store, the import of `requests` fails.
+- pip has its own copy of certifi. This wheel does not change pip.
+
+Go, Ruby, and .NET use the system store by default. Rust and PHP depend on the crate or the library.
+This table comes from upstream docs. This project did not test these runtimes.
+
+| Runtime | Default | Exceptions |
+| --- | --- | --- |
+| Go | [`crypto/x509`](https://pkg.go.dev/crypto/x509) uses the system roots or the platform verifier if `Roots` is nil. | A program can set `Roots`. [`x509roots/fallback`](https://pkg.go.dev/golang.org/x/crypto/x509roots/fallback) embeds roots for use if no system store exists. |
+| Ruby | [`Store#set_default_paths`](https://docs.ruby-lang.org/en/master/OpenSSL/X509/Store.html) uses the system certificates. | [RubyInstaller](https://github.com/oneclick/rubyinstaller2/blob/master/resources/ssl/README-SSL.md) on Windows ships a CA list from Mozilla. |
+| Rust | There is no default. The TLS crate decides. [`rustls-native-certs`](https://docs.rs/rustls-native-certs) reads the platform store. [`native-tls`](https://docs.rs/native-tls) uses the platform TLS library. | [`webpki-roots`](https://docs.rs/webpki-roots) is a compiled-in copy of the Mozilla roots. `rustls` with this crate does not use the system store. |
+| PHP | [`openssl.cafile`](https://www.php.net/manual/en/openssl.configuration.php) and [`curl.cainfo`](https://www.php.net/manual/en/curl.configuration.php) are empty by default. These pages do not state the fallback. We expect the OpenSSL and libcurl defaults to apply, and we did not confirm this. | [`composer/ca-bundle`](https://github.com/composer/ca-bundle) can fall back to a bundled file. |
+| .NET | [OS libraries](https://learn.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography) supply the roots: the Windows store, `SecTrustSettings` on macOS, and OpenSSL paths on Linux. | A program can set [`CustomTrustStore`](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509chainpolicy.customtruststore). |
+
+## Bun
+
+`//bun:rootbeerz_1` builds Bun from source with no compiled-in Mozilla roots.
+The build deletes the root files and reads only the system store.
+Only macOS arm64 is pinned. The build has no LTO, so the binary differs from an upstream release.
+
+- `--use-bundled-ca` has no bundled set to use.
+- `--use-system-ca` has no extra effect.
+- `tls.rootCertificates` is empty.
+- On macOS, `SSL_CERT_FILE` or `SSL_CERT_DIR` replaces the keychain.
+
 ## Known gaps
 
 - Not fully hermetic. On macOS, the SDK and POSIX tools come from the host.
@@ -148,9 +207,9 @@ Node 16 on macOS did not. [docs/HERMETICITY.md](docs/HERMETICITY.md#reproducibil
 
 ## Names
 
-The project is `rootbeer-node`. Identifiers already use `rootbeer`:
+The project is `rootbeerz`. Identifiers already use `rootbeer`:
 Bazel targets, `ROOTBEER_*` variables, and archive names.
-The repository was `systemca-nodejs` for a short time. GitHub redirects the old address.
+The repository was `systemca-nodejs`, then `rootbeer-node`. GitHub redirects the old addresses.
 
 ## License
 
