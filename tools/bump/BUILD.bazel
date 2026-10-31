@@ -1,0 +1,39 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "bump_lib",
+    srcs = [
+        "apply.go",
+        "github.go",
+        "main.go",
+        "pins.go",
+        "upstream.go",
+        "version.go",
+    ],
+    importpath = "rootbeerz/tools/bump",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "bump",
+    embed = [":bump_lib"],
+    pure = "on",
+)
+
+go_test(
+    name = "bump_test",
+    size = "small",
+    srcs = [
+        "apply_test.go",
+        "github_test.go",
+        "main_test.go",
+        "pins_test.go",
+        "upstream_test.go",
+        "version_test.go",
+    ],
+    data = [
+        "//:MODULE.bazel",
+    ] + glob(["testdata/**"]),
+    embed = [":bump_lib"],
+    pure = "on",
+)

@@ -1,0 +1,122 @@
+[
+  {
+    "version": "v27.0.0-alpha.0.0.0",
+    "date": "2026-10-29",
+    "lts": false,
+    "security": false
+  },
+  {
+    "version": "v26.13.0",
+    "date": "2026-10-28",
+    "lts": "Lithium",
+    "security": false
+  },
+  {
+    "version": "v26.12.1",
+    "date": "2026-10-21",
+    "lts": false,
+    "security": true
+  },
+  {
+    "version": "v26.12.0",
+    "date": "2026-10-14",
+    "lts": false,
+    "security": false
+  },
+  {
+    "version": "v25.9.0",
+    "date": "2026-03-31",
+    "lts": false,
+    "security": false
+  },
+  {
+    "version": "v24.22.2",
+    "date": "2026-10-27",
+    "lts": "Krypton",
+    "security": false
+  },
+  {
+    "version": "v24.22.1",
+    "date": "2026-10-20",
+    "lts": "Krypton",
+    "security": true
+  },
+  {
+    "version": "v24.22.0",
+    "date": "2026-10-14",
+    "lts": "Krypton",
+    "security": false
+  },
+  {
+    "version": "v22.23.4",
+    "date": "2026-10-20",
+    "lts": "Jod",
+    "security": true
+  },
+  {
+    "version": "v22.23.3",
+    "date": "2026-09-23",
+    "lts": "Jod",
+    "security": false
+  },
+  {
+    "version": "v22.23.2",
+    "date": "2026-07-28",
+    "lts": "Jod",
+    "security": true
+  },
+  {
+    "version": "v22.23.1",
+    "date": "2026-06-22",
+    "lts": "Jod",
+    "security": false
+  },
+  {
+    "version": "v22.23.0",
+    "date": "2026-06-17",
+    "lts": "Jod",
+    "security": true
+  },
+  {
+    "version": "v22.22.3",
+    "date": "2026-05-13",
+    "lts": "Jod",
+    "security": false
+  },
+  {
+    "version": "v22.22.2",
+    "date": "2026-03-24",
+    "lts": "Jod",
+    "security": true
+  },
+  {
+    "version": "v22.22.1",
+    "date": "2026-03-04",
+    "lts": "Jod",
+    "security": false
+  },
+  {
+    "version": "v22.22.0",
+    "date": "2026-01-12",
+    "lts": "Jod",
+    "security": true
+  },
+  {
+    "version": "v22.21.1",
+    "date": "2025-10-28",
+    "lts": "Jod",
+    "security": false
+  },
+  {
+    "version": "v22.21.0",
+    "date": "2025-10-20",
+    "lts": "Jod",
+    "security": false
+  },
+  {
+    "version": "v22.20.0",
+    "date": "2025-09-24",
+    "lts": "Jod",
+    "security": false
+  }
+]

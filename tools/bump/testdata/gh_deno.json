@@ -1,0 +1,62 @@
+[
+  {
+    "tag_name": "v2.9.8",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "deno_src.tar.gz",
+        "browser_download_url": "https://github.com/denoland/deno/releases/download/v2.9.8/deno_src.tar.gz",
+        "digest": "sha256:b57d0281c1647effc735f242ba52bc409747fc6ed6ad4946e76f062c67e113eb"
+      }
+    ]
+  },
+  {
+    "tag_name": "v2.9.7",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "deno_src.tar.gz",
+        "browser_download_url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno_src.tar.gz",
+        "digest": "sha256:21069d2f4dd65b6832e3f5c373c24a43a8d35cb3d68d3841e15d0582bed39ea8"
+      }
+    ]
+  },
+  {
+    "tag_name": "v2.9.6",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "deno_src.tar.gz",
+        "browser_download_url": "https://github.com/denoland/deno/releases/download/v2.9.6/deno_src.tar.gz",
+        "digest": "sha256:dfd816eea5147eeafda5e235c241a3286e67aeaae1d0e50f9973ff6bf4f14fb2"
+      }
+    ]
+  },
+  {
+    "tag_name": "v2.9.5",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "deno_src.tar.gz",
+        "browser_download_url": "https://github.com/denoland/deno/releases/download/v2.9.5/deno_src.tar.gz",
+        "digest": "sha256:b3d1d66e47d74f5bda84d5a80282135b7d8f2e336fbcf98c75be32f18130864a"
+      }
+    ]
+  },
+  {
+    "tag_name": "v2.9.4",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "deno_src.tar.gz",
+        "browser_download_url": "https://github.com/denoland/deno/releases/download/v2.9.4/deno_src.tar.gz",
+        "digest": "sha256:95f9d8361809f2d2f3ee2d8a6955951dcf96c2f4bbeb540c2d6fdd9363e6dc94"
+      }
+    ]
+  }
+]

@@ -1,0 +1,32 @@
+# Finds new upstream releases, and opens one pull request for each. docs/ADDING_A_VERSION.md has the rules.
+# - The repository setting "Allow GitHub Actions to create and approve pull requests" must be on.
+# - A person must approve the checks of each pull request. This job does not dispatch ci.yml,
+#   because the non-PR jobs of ci.yml have no pr-approval gate.
+# - The tool commits through the REST API with no author, so GitHub signs each commit.
+# tests/bump_workflow_test.py checks these rules.
+name: version bumps
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  bump:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-bazel
+      - name: Open a pull request for each new release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bazel run //tools/bump -- --repo "$GITHUB_REPOSITORY" --base-sha "$GITHUB_SHA"

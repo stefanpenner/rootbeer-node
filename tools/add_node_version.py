@@ -7,6 +7,7 @@ It edits these files:
   MODULE.bazel                one node.version tag, replacing the tag of the same line
   runtimes/node.json          the entry of the line. The CI matrix comes from this file.
   README.md                   the version table and the prose that lists the lines
+  STATUS.md                   the row of the line in the Result table
 
 The three sha256 values come from the release SHASUMS256.txt on nodejs.org.
 Use --shasums for a local copy. For a new line, it then downloads the source tarball,
@@ -136,6 +137,25 @@ def update(module, manifest, readme, version, shasums, old_v8):
     return module, manifest, readme
 
 
+def update_status(status, version):
+    """Returns STATUS.md with an untested row for the version. Only the Result table changes."""
+    head, marker, tail = status.partition("## Result\n")
+    rows = list(re.finditer(r"^\| (\d+)\.\d+\.\d+ \|.*$", tail.split("\n## ")[0], re.MULTILINE))
+    if not rows:
+        die("STATUS.md has no Result table")
+    major = int(version.split(".")[0])
+    row = f"| {version} | untested | untested | None. CI has not run this version. |"
+    same = [r for r in rows if int(r.group(1)) == major]
+    if same:
+        return head + marker + tail[:same[0].start()] + row + tail[same[0].end():]
+    lower = [r for r in rows if int(r.group(1)) < major]
+    if lower:
+        at = lower[0].start()
+        return head + marker + tail[:at] + row + "\n" + tail[at:]
+    at = rows[-1].end()
+    return head + marker + tail[:at] + "\n" + row + tail[at:]
+
+
 def fetch(url):
     with urllib.request.urlopen(url, timeout=120) as response:
         return response.read()
@@ -174,9 +194,9 @@ def main(argv):
             shasums = stream.read()
     else:
         shasums = fetch(DIST.format(version) + "SHASUMS256.txt").decode()
-    paths = [os.path.join(ROOT, p) for p in ("MODULE.bazel", "runtimes/node.json", "README.md")]
+    paths = [os.path.join(ROOT, p) for p in ("MODULE.bazel", "runtimes/node.json", "README.md", "STATUS.md")]
     old = [open(p, encoding="utf-8").read() for p in paths]
-    new = update(*old, version, shasums, old_v8="--old-v8" in flags)
+    new = [*update(*old[:3], version, shasums, old_v8="--old-v8" in flags), update_status(old[3], version)]
     for path, text in zip(paths, new):
         with open(path, "w", encoding="utf-8") as stream:
             stream.write(text)
@@ -191,8 +211,8 @@ def main(argv):
             for path, text in zip(paths, old):
                 with open(path, "w", encoding="utf-8") as stream:
                     stream.write(text)
-            die(f"no patches for Node {major}. MODULE.bazel, node.json and README.md are restored.")
-    print(f"Updated MODULE.bazel, node.json and README.md for Node {version}.")
+            die(f"no patches for Node {major}. MODULE.bazel, node.json, README.md and STATUS.md are restored.")
+    print(f"Updated MODULE.bazel, node.json, README.md and STATUS.md for Node {version}.")
     print(f"Next: bazel test //tests:source_{major}_test //tests:versions_test, then")
     print(f"  bazel build //node:rootbeer_{major} && bazel test //tests:hermetic_{major}_test //tests:network_{major}_test")
 
